@@ -1,0 +1,15 @@
+crawl4ai
+pandas
+numpy
+yfinance
+requests
+pywhatkit
+google-auth
+google-api-python-client
+openai
+python-dotenv
+jupyter
+matplotlib
+seaborn
+ta
+ccxt
