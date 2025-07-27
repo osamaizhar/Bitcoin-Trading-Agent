@@ -43,7 +43,7 @@ def test_environment_variables():
         ('COINMARKETCAP_API_KEY', 'CoinMarketCap API key'),
         ('GOOGLE_SHEETS_SERVICE_ACCOUNT', 'Google Sheets service account file'),
         ('GOOGLE_SHEETS_ID', 'Google Sheets ID'),
-        ('OPENAI_API_KEY', 'OpenAI API key for LLM features')
+        ('GROQ_API_KEY', 'Groq Cloud API key for LLM features')
     ]
     
     required_count = 0
@@ -253,7 +253,7 @@ def main():
         ('google-auth', 'Google API authentication', False),
         ('googleapiclient', 'Google API client', False),
         ('crawl4ai', 'Web scraping', False),
-        ('openai', 'OpenAI API', False)
+        ('groq', 'Groq Cloud API', False)
     ]
     
     core_success = 0

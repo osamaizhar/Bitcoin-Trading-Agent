@@ -86,7 +86,7 @@ Bitcoin-Trading-Agent/
 - **Web Scraping**: `crawl4ai` v0.7.x (latest async version)
 - **Technical Analysis**: `ta` (comprehensive indicators)
 - **Notifications**: `pywhatkit` (WhatsApp), `smtplib` (Gmail)
-- **APIs**: `google-api-python-client`, `openai`
+- **APIs**: `google-api-python-client`, `groq`
 - **Scheduling**: `schedule`
 - **Environment**: `python-dotenv`
 
@@ -113,7 +113,7 @@ TRADING_MODE=paper
 COINBASE_API_KEY=your_coinbase_api_key
 COINBASE_API_SECRET=your_coinbase_secret
 COINMARKETCAP_API_KEY=your_cmc_key
-OPENAI_API_KEY=your_openai_key
+GROQ_API_KEY=your_groq_key
 
 # Notifications  
 WHATSAPP_PHONE_NUMBER=+923353015576
