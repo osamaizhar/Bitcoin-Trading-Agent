@@ -12,3 +12,11 @@ matplotlib
 seaborn
 ta
 ccxt
+crawl4ai
+html5lib 
+lxml
+beautifulsoup4
+fake-useragent
+requests-html
+pycoingecko
+nest_asyncio

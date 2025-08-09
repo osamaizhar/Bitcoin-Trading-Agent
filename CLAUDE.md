@@ -11,13 +11,16 @@ This is a comprehensive Bitcoin Trading Agent that implements Dollar-Cost Averag
 ### Main Components
 
 **Jupyter Notebooks (Primary Interface):**
-- `notebooks/01_data_analysis.ipynb` - Data collection from multiple sources (Yahoo Finance, CoinMarketCap, Investing.com with Crawl4AI)
+- `notebooks/01_data_collection.ipynb` - Enhanced data collection from multiple sources (Yahoo Finance, CoinGecko, Binance, CoinMarketCap, Investing.com with anti-bot protection)
 - `notebooks/02_trading_system.ipynb` - DCA strategy implementation with Coinbase integration
+- `notebooks/02_binance_trading_system.ipynb` - Alternative Binance-based trading system
 - `notebooks/03_bot_notifications.ipynb` - WhatsApp notifications and Gmail reports system
+- `notebooks/03_binance_bot_notifications.ipynb` - Binance-specific bot notifications
 - `notebooks/04_live_dashboard.ipynb` - Real-time monitoring dashboard
+- `notebooks/04_binance_live_dashboard.ipynb` - Binance-specific real-time dashboard
 
 **Python Modules (src/):**
-- `src/data_collector.py` - Multi-source Bitcoin data collection with fallback mechanisms
+- `src/data_collector.py` - Enhanced multi-source Bitcoin data collection with 5 data sources, retry logic, and anti-bot measures
 - `src/trading_engine.py` - Core trading logic (DCA strategy, ATR stop-loss, risk management)
 - `src/notifications.py` - WhatsApp alerts via PyWhatKit and HTML email reports
 - `src/config_manager.py` - Configuration management with Google Sheets integration
@@ -74,10 +77,30 @@ GMAIL_APP_PASSWORD=your_app_password
 # Notifications (WhatsApp number is hardcoded to +923353015576)
 WHATSAPP_PHONE_NUMBER=+923353015576
 
-# Optional APIs
+# Optional APIs (CoinGecko and Binance are free and don't require keys)
 COINMARKETCAP_API_KEY=your_cmc_key
 GOOGLE_SHEETS_SERVICE_ACCOUNT=path/to/service_account.json
 GROQ_API_KEY=your_groq_key
+
+# Data Source Priority (automatic failover)
+# 1. Yahoo Finance (primary)
+# 2. CoinGecko (free API)
+# 3. Binance Public API (free)  
+# 4. CoinMarketCap (requires API key)
+# 5. Investing.com (scraping fallback)
+```
+
+### Development Tools
+```bash
+# Format code (Poetry development dependencies)
+black src/ test_dependencies.py
+flake8 src/ test_dependencies.py
+
+# Run tests (if pytest is configured)
+pytest
+
+# Install development dependencies
+poetry install --with dev
 ```
 
 ### Running the System
@@ -86,10 +109,10 @@ GROQ_API_KEY=your_groq_key
 jupyter notebook
 
 # Run notebooks in sequence:
-# 1. 01_data_analysis.ipynb (data collection & analysis)
-# 2. 02_trading_system.ipynb (trading strategy testing)
-# 3. 03_bot_notifications.ipynb (24/7 bot with notifications)
-# 4. 04_live_dashboard.ipynb (real-time monitoring)
+# 1. 01_data_collection.ipynb (data collection & analysis)  
+# 2. 02_trading_system.ipynb or 02_binance_trading_system.ipynb (trading strategy testing)
+# 3. 03_bot_notifications.ipynb or 03_binance_bot_notifications.ipynb (24/7 bot with notifications)
+# 4. 04_live_dashboard.ipynb or 04_binance_live_dashboard.ipynb (real-time monitoring)
 
 # Validate system before deployment
 python test_dependencies.py
@@ -106,10 +129,22 @@ python test_dependencies.py
 - **smtplib** - Gmail SMTP for email reports
 
 ### Optional/Advanced Dependencies
-- **crawl4ai** v0.7.x - Modern async web scraping for Investing.com
-- **ccxt** - Cryptocurrency exchange integration
+- **crawl4ai** v0.2.x - Modern async web scraping for Investing.com (version mismatch with docs)
+- **ccxt** - Cryptocurrency exchange integration (Binance, Coinbase Pro)
+- **pycoingecko** - CoinGecko API client (free Bitcoin data)
+- **beautifulsoup4** - HTML parsing for web scraping
+- **fake-useragent** - User agent rotation for anti-bot detection
+- **requests-html** - Enhanced requests with JavaScript support
+- **lxml** - Fast XML/HTML parsing
 - **google-api-python-client** - Google Sheets configuration management
 - **groq** - LLM-powered market insights with Llama 3.3 70B
+- **jupyter** - Notebook interface for interactive development
+- **matplotlib, seaborn** - Data visualization and charting
+
+### Development Dependencies (Poetry)
+- **pytest** - Testing framework
+- **black** - Code formatting
+- **flake8** - Code linting and style checking
 
 ### Notification Systems
 - **WhatsApp**: Instant trade alerts to +923353015576 using PyWhatKit
@@ -155,6 +190,8 @@ python test_dependencies.py
 - Uses virtual environment located in `env/` directory
 - Project includes comprehensive dependency testing via `test_dependencies.py`
 - No Docker configuration found - runs natively in Python environment
+- Supports both Poetry (pyproject.toml) and pip (requirements.txt) dependency management
+- Dual exchange support: Coinbase and Binance implementations available
 
 ### Error Handling
 - Graceful degradation when data sources fail

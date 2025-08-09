@@ -22,7 +22,7 @@ class ConfigManager:
     """Configuration manager with Google Sheets integration"""
     
     def __init__(self):
-        self.service_account_path = os.getenv('GOOGLE_SHEETS_SERVICE_ACCOUNT')
+        self.api_key = os.getenv('GOOGLE_SHEETS_API_KEY')
         self.sheets_id = os.getenv('GOOGLE_SHEETS_ID')
         self.local_config = self._load_local_config()
         self.cached_config = self.local_config.copy()
@@ -84,7 +84,7 @@ class ConfigManager:
     def _refresh_config(self):
         """Refresh configuration from Google Sheets"""
         try:
-            if self.service_account_path and self.sheets_id:
+            if self.api_key and self.sheets_id:
                 sheets_config = self._fetch_from_sheets()
                 if sheets_config:
                     # Merge with local config (sheets override local)
@@ -107,63 +107,62 @@ class ConfigManager:
             return self.cached_config
     
     def _fetch_from_sheets(self):
-        """Fetch configuration from Google Sheets"""
+        """Fetch configuration from Google Sheets using API key"""
+        import requests
+        
         try:
-            from google.oauth2.service_account import Credentials
-            from googleapiclient.discovery import build
+            # Google Sheets API v4 URL
+            url = f"https://sheets.googleapis.com/v4/spreadsheets/{self.sheets_id}/values/Config!A:B"
             
-            # Authenticate
-            credentials = Credentials.from_service_account_file(
-                self.service_account_path,
-                scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
-            )
+            # API request with key
+            response = requests.get(url, params={'key': self.api_key}, timeout=30)
             
-            service = build('sheets', 'v4', credentials=credentials)
-            
-            # Read configuration range
-            range_name = 'Config!A:B'  # Column A: Parameter, Column B: Value
-            result = service.spreadsheets().values().get(
-                spreadsheetId=self.sheets_id,
-                range=range_name
-            ).execute()
-            
-            values = result.get('values', [])
-            
-            if not values:
-                logger.warning("Empty Google Sheets configuration")
+            if response.status_code == 200:
+                data = response.json()
+                values = data.get('values', [])
+                
+                if not values:
+                    logger.warning("Empty Google Sheets configuration")
+                    return None
+                
+                config = {}
+                
+                # Parse configuration (skip header row)
+                for row in values[1:]:
+                    if len(row) >= 2:
+                        param = row[0].lower().replace(' ', '_').replace('-', '_')
+                        value = row[1]
+                        
+                        # Type conversion based on parameter name
+                        try:
+                            if param in ['budget', 'dca_percentage', 'atr_multiplier', 'position_size_pct', 'max_drawdown']:
+                                config[param] = float(value)
+                            elif param in ['rsi_oversold', 'rsi_overbought', 'max_daily_trades', 'min_time_between_trades', 
+                                          'notification_rate_limit', 'cycle_interval', 'health_check_interval']:
+                                config[param] = int(value)
+                            elif param in ['enable_dca', 'enable_atr_stops', 'whatsapp_enabled', 'email_enabled']:
+                                config[param] = str(value).lower() in ['true', '1', 'yes', 'on', 'enabled']
+                            else:
+                                config[param] = str(value)
+                        except (ValueError, TypeError):
+                            logger.warning(f"Invalid value for {param}: {value}")
+                            continue
+                
+                logger.info(f"Loaded {len(config)} parameters from Google Sheets")
+                return config
+                
+            elif response.status_code == 403:
+                logger.error("Google Sheets API access denied - check API key and sheet permissions")
                 return None
-            
-            config = {}
-            
-            # Parse configuration
-            for row in values[1:]:  # Skip header row
-                if len(row) >= 2:
-                    param = row[0].lower().replace(' ', '_').replace('-', '_')
-                    value = row[1]
-                    
-                    # Type conversion based on parameter name
-                    try:
-                        if param in ['budget', 'dca_percentage', 'atr_multiplier', 'position_size_pct', 'max_drawdown']:
-                            config[param] = float(value)
-                        elif param in ['rsi_oversold', 'rsi_overbought', 'max_daily_trades', 'min_time_between_trades', 
-                                      'notification_rate_limit', 'cycle_interval', 'health_check_interval']:
-                            config[param] = int(value)
-                        elif param in ['enable_dca', 'enable_atr_stops', 'whatsapp_enabled', 'email_enabled']:
-                            config[param] = str(value).lower() in ['true', '1', 'yes', 'on', 'enabled']
-                        else:
-                            config[param] = str(value)
-                    except (ValueError, TypeError):
-                        logger.warning(f"Invalid value for {param}: {value}")
-                        continue
-            
-            logger.info(f"Loaded {len(config)} parameters from Google Sheets")
-            return config
-            
-        except ImportError:
-            logger.warning("Google API client not installed")
-            return None
-        except FileNotFoundError:
-            logger.warning(f"Service account file not found: {self.service_account_path}")
+            elif response.status_code == 404:
+                logger.error("Google Sheet not found - check sheet ID and sharing settings")
+                return None
+            else:
+                logger.error(f"Google Sheets API error: {response.status_code} - {response.text}")
+                return None
+                
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Network error fetching from Google Sheets: {e}")
             return None
         except Exception as e:
             logger.error(f"Google Sheets fetch error: {e}")
@@ -337,28 +336,27 @@ def export_config_template(filepath='config_template.csv'):
         return False
 
 
-def validate_google_sheets_setup(service_account_path, sheets_id):
+def validate_google_sheets_setup(api_key, sheets_id):
     """Validate Google Sheets configuration"""
+    import requests
+    
     try:
-        from google.oauth2.service_account import Credentials
-        from googleapiclient.discovery import build
+        # Test API access
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{sheets_id}/values/Config!A1:B1"
+        response = requests.get(url, params={'key': api_key}, timeout=10)
         
-        # Test authentication
-        credentials = Credentials.from_service_account_file(
-            service_account_path,
-            scopes=['https://www.googleapis.com/auth/spreadsheets.readonly']
-        )
-        
-        service = build('sheets', 'v4', credentials=credentials)
-        
-        # Test sheet access
-        result = service.spreadsheets().values().get(
-            spreadsheetId=sheets_id,
-            range='Config!A1:B1'
-        ).execute()
-        
-        print("✅ Google Sheets configuration is valid")
-        return True
+        if response.status_code == 200:
+            print("✅ Google Sheets configuration is valid")
+            return True
+        elif response.status_code == 403:
+            print("❌ Google Sheets API access denied - check API key")
+            return False
+        elif response.status_code == 404:
+            print("❌ Google Sheet not found - check sheet ID and sharing settings")
+            return False
+        else:
+            print(f"❌ Google Sheets validation failed: {response.status_code}")
+            return False
         
     except Exception as e:
         print(f"❌ Google Sheets validation failed: {e}")
