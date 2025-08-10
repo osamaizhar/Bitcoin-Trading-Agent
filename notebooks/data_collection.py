@@ -16,6 +16,7 @@ import warnings
 import json
 from bs4 import BeautifulSoup
 from crawl4ai import AsyncWebCrawler
+import ta  # Technical Analysis library
 
 # Suppress warnings
 warnings.filterwarnings('ignore')
@@ -38,7 +39,7 @@ def setup_environment():
     print(f"Data directory ready: {os.path.abspath('../data')}")
 
 async def collect_yahoo_async():
-    """Collect Yahoo Finance data async"""
+    """Collect Yahoo Finance data async with technical indicators"""
     try:
         print("\n[INFO] Fetching Yahoo Finance data...")
         btc = yf.Ticker("BTC-USD")
@@ -49,14 +50,61 @@ async def collect_yahoo_async():
         hist_df.columns = hist_df.columns.str.lower()
         hist_df['source'] = 'yahoo'
         
-        print(f"[OK] Yahoo Finance data: {len(hist_df)} records")
+        # Calculate technical indicators
+        print("[INFO] Calculating technical indicators...")
+        
+        # ATR (Average True Range) - 14 period
+        hist_df['atr_14'] = ta.volatility.average_true_range(
+            hist_df['high'], hist_df['low'], hist_df['close'], window=14
+        )
+        
+        # RSI (Relative Strength Index) - 14 period  
+        hist_df['rsi_14'] = ta.momentum.rsi(hist_df['close'], window=14)
+        
+        # Simple Moving Averages
+        hist_df['sma_20'] = ta.trend.sma_indicator(hist_df['close'], window=20)
+        hist_df['sma_50'] = ta.trend.sma_indicator(hist_df['close'], window=50)
+        
+        # Exponential Moving Averages
+        hist_df['ema_12'] = ta.trend.ema_indicator(hist_df['close'], window=12)
+        hist_df['ema_26'] = ta.trend.ema_indicator(hist_df['close'], window=26)
+        
+        # MACD
+        hist_df['macd'] = ta.trend.macd(hist_df['close'])
+        hist_df['macd_signal'] = ta.trend.macd_signal(hist_df['close'])
+        hist_df['macd_histogram'] = ta.trend.macd_diff(hist_df['close'])
+        
+        # Bollinger Bands
+        hist_df['bb_high'] = ta.volatility.bollinger_hband(hist_df['close'])
+        hist_df['bb_low'] = ta.volatility.bollinger_lband(hist_df['close'])
+        hist_df['bb_mid'] = ta.volatility.bollinger_mavg(hist_df['close'])
+        
+        # Volume indicators
+        hist_df['volume_sma'] = ta.trend.sma_indicator(hist_df['volume'], window=20)
+        
+        print(f"[OK] Yahoo Finance data: {len(hist_df)} records with {len([col for col in hist_df.columns if col not in ['date', 'open', 'high', 'low', 'close', 'volume', 'source']])} technical indicators")
         print(f"Date range: {hist_df['date'].min().date()} to {hist_df['date'].max().date()}")
         print(f"Current price: ${current_price:,.2f}")
         
-        return hist_df, current_price
+        # Get current technical indicator values
+        latest_indicators = {
+            'atr_14': hist_df['atr_14'].iloc[-1],
+            'rsi_14': hist_df['rsi_14'].iloc[-1],
+            'sma_20': hist_df['sma_20'].iloc[-1],
+            'sma_50': hist_df['sma_50'].iloc[-1],
+            'macd': hist_df['macd'].iloc[-1],
+            'macd_signal': hist_df['macd_signal'].iloc[-1]
+        }
+        
+        print(f"Current ATR: ${latest_indicators['atr_14']:,.2f}")
+        print(f"Current RSI: {latest_indicators['rsi_14']:.1f}")
+        print(f"Current SMA 20: ${latest_indicators['sma_20']:,.2f}")
+        print(f"Current MACD: {latest_indicators['macd']:.2f}")
+        
+        return hist_df, current_price, latest_indicators
     except Exception as e:
         print(f"[ERROR] Yahoo Finance failed: {e}")
-        return None, None
+        return None, None, None
 
 async def collect_coinmarketcap_async():
     """Collect CoinMarketCap data async"""
@@ -170,8 +218,8 @@ async def collect_investing_crawl4ai_async():
         print(f"[ERROR] Investing.com scraping failed: {e}")
         return None
 
-def generate_markdown_report(yahoo_df, yahoo_price, coinmarketcap_data, investing_df):
-    """Generate comprehensive markdown report"""
+def generate_markdown_report(yahoo_df, yahoo_price, coinmarketcap_data, investing_df, yahoo_indicators=None):
+    """Generate comprehensive markdown report with technical indicators"""
     
     markdown = [
         "# Complete Bitcoin Data Collection Report\n",
@@ -238,9 +286,39 @@ def generate_markdown_report(yahoo_df, yahoo_price, coinmarketcap_data, investin
             "|------|------|------|-----|-------|--------|"
         ])
         
-        for _, row in yahoo_df.tail(10).iterrows():
+        # Since yahoo_df is sorted descending (latest first), use head(10) to get latest records
+        for _, row in yahoo_df.head(10).iterrows():
             markdown.append(f"| {row['date'].date()} | ${row['open']:,.2f} | ${row['high']:,.2f} | ${row['low']:,.2f} | ${row['close']:,.2f} | {row['volume']:,} |")
         markdown.append("")
+        
+        # Add technical indicators section if available
+        if yahoo_indicators:
+            markdown.extend([
+                "### Technical Indicators (Current Values)\n",
+                "**Trading Signals and Market Analysis:**\n",
+                f"- **ATR (14)**: ${yahoo_indicators['atr_14']:,.2f} - Average True Range for stop-loss calculations",
+                f"- **RSI (14)**: {yahoo_indicators['rsi_14']:.1f} - Relative Strength Index ({'Oversold' if yahoo_indicators['rsi_14'] < 30 else 'Overbought' if yahoo_indicators['rsi_14'] > 70 else 'Neutral'})",
+                f"- **SMA 20**: ${yahoo_indicators['sma_20']:,.2f} - 20-period Simple Moving Average",
+                f"- **SMA 50**: ${yahoo_indicators['sma_50']:,.2f} - 50-period Simple Moving Average",
+                f"- **MACD**: {yahoo_indicators['macd']:.2f} - Moving Average Convergence Divergence",
+                f"- **MACD Signal**: {yahoo_indicators['macd_signal']:.2f} - MACD Signal Line",
+                ""
+            ])
+            
+            # Add trend analysis
+            price_vs_sma20 = yahoo_price - yahoo_indicators['sma_20']
+            price_vs_sma50 = yahoo_price - yahoo_indicators['sma_50']
+            sma_trend = "Bullish" if yahoo_indicators['sma_20'] > yahoo_indicators['sma_50'] else "Bearish"
+            
+            markdown.extend([
+                "### Market Analysis Summary\n",
+                f"- **Price vs SMA 20**: ${price_vs_sma20:+,.2f} ({'Above' if price_vs_sma20 > 0 else 'Below'} moving average)",
+                f"- **Price vs SMA 50**: ${price_vs_sma50:+,.2f} ({'Above' if price_vs_sma50 > 0 else 'Below'} moving average)",
+                f"- **Trend Signal**: {sma_trend} (SMA 20 {'>' if sma_trend == 'Bullish' else '<'} SMA 50)",
+                f"- **RSI Signal**: {'Oversold - Potential Buy' if yahoo_indicators['rsi_14'] < 30 else 'Overbought - Potential Sell' if yahoo_indicators['rsi_14'] > 70 else 'Neutral - Hold/Monitor'}",
+                f"- **MACD Signal**: {'Bullish' if yahoo_indicators['macd'] > yahoo_indicators['macd_signal'] else 'Bearish'} (MACD {'above' if yahoo_indicators['macd'] > yahoo_indicators['macd_signal'] else 'below'} signal line)",
+                ""
+            ])
     
     # CoinMarketCap Section
     if coinmarketcap_data is not None:
@@ -329,53 +407,53 @@ async def main():
     results = await asyncio.gather(yahoo_task, cmc_task, investing_task, return_exceptions=True)
     
     # Extract results
-    yahoo_df, yahoo_price = results[0] if not isinstance(results[0], Exception) else (None, None)
+    yahoo_result = results[0] if not isinstance(results[0], Exception) else (None, None, None)
+    yahoo_df, yahoo_price, yahoo_indicators = yahoo_result if len(yahoo_result) == 3 else (yahoo_result[0], yahoo_result[1], None)
     coinmarketcap_data = results[1] if not isinstance(results[1], Exception) else None
     investing_df = results[2] if not isinstance(results[2], Exception) else None
     
-    # Generate markdown report
-    print("\n[INFO] Generating markdown report...")
-    markdown_report = generate_markdown_report(yahoo_df, yahoo_price, coinmarketcap_data, investing_df)
+    # Ensure dataframes are sorted from latest to oldest before generating report
+    # Sort Yahoo DataFrame by date descending if available
+    if yahoo_df is not None and 'date' in yahoo_df.columns:
+        yahoo_df = yahoo_df.sort_values('date', ascending=False).reset_index(drop=True)
+    # Sort Investing DataFrame by Date descending if available
+    if investing_df is not None and 'Date' in investing_df.columns:
+        # Convert Date column to datetime for proper sorting
+        investing_df['Date'] = pd.to_datetime(investing_df['Date'], errors='coerce')
+        investing_df = investing_df.sort_values('Date', ascending=False).reset_index(drop=True)
+        # Convert back to string format for display
+        investing_df['Date'] = investing_df['Date'].dt.strftime('%b %d, %Y')
     
-    # Save markdown report
-    markdown_path = os.path.abspath('complete_bitcoin_data.md')
-    with open('complete_bitcoin_data.md', 'w', encoding='utf-8') as f:
+    # Generate comprehensive markdown report with technical indicators
+    print("\n[INFO] Generating comprehensive markdown report...")
+    markdown_report = generate_markdown_report(yahoo_df, yahoo_price, coinmarketcap_data, investing_df, yahoo_indicators)
+    
+    # Save the markdown report
+    with open('../complete_bitcoin_data.md', 'w', encoding='utf-8') as f:
         f.write(markdown_report)
     
-    print(f"[OK] Markdown report generated: {markdown_path}")
+    print(f"[OK] Complete Bitcoin data report saved to: {os.path.abspath('../complete_bitcoin_data.md')}")
     
-    # Save data files
-    print("\n[INFO] Saving data files...")
-    if yahoo_df is not None:
-        yahoo_df.to_csv('../data/btc_yahoo_raw.csv', index=False)
-        print("[OK] Yahoo Finance data saved")
-    if coinmarketcap_data is not None:
-        with open('../data/btc_coinmarketcap_current.json', 'w') as f:
-            json.dump(coinmarketcap_data, f, indent=2, default=str)
-        print("[OK] CoinMarketCap data saved")
-    if investing_df is not None:
-        investing_df.to_csv('../data/btc_investing_raw.csv', index=False)
-        print("[OK] Investing.com data saved")
+    # All data is now saved in the comprehensive markdown report
+    # No need for separate CSV or JSON files
     
     # Summary
-    print("\n" + "="*50)
-    print("[SUMMARY] Data Collection Summary")
-    print("="*50)
-    successful_sources = sum([1 for x in [yahoo_df, coinmarketcap_data, investing_df] if x is not None])
-    print(f"[OK] Successful sources: {successful_sources}/3")
-    
-    total_records = 0
-    if yahoo_df is not None:
-        total_records += len(yahoo_df)
-    if investing_df is not None:
-        total_records += len(investing_df)
-    
-    print(f"[DATA] Total records collected: {total_records}")
-    print(f"[READY] Ready for trading analysis")
-    print(f"[REPORT] Comprehensive markdown report saved to: {markdown_path}")
-    print("="*50)
+    print("\n" + "="*60)
     print("DATA COLLECTION COMPLETE")
-    print("="*50)
+    print("="*60)
+    successful_sources = []
+    if yahoo_df is not None: successful_sources.append("Yahoo Finance")
+    if coinmarketcap_data is not None: successful_sources.append("CoinMarketCap") 
+    if investing_df is not None: successful_sources.append("Investing.com")
+    
+    print(f"✅ Sources collected: {', '.join(successful_sources)}")
+    print(f"📊 Yahoo Finance records: {len(yahoo_df) if yahoo_df is not None else 0}")
+    print(f"💰 Current Bitcoin price: ${yahoo_price:,.2f}" if yahoo_price else "Current price not available")
+    if yahoo_indicators:
+        print(f"📈 Technical indicators calculated: ATR, RSI, SMA, MACD, Bollinger Bands")
+        print(f"   Current ATR: ${yahoo_indicators['atr_14']:,.2f}")
+        print(f"   Current RSI: {yahoo_indicators['rsi_14']:.1f}")
+    print(f"📄 Report saved: complete_bitcoin_data.md")
 
 if __name__ == "__main__":
     asyncio.run(main())
