@@ -1,0 +1,7 @@
+name: Prompt 1
+version: 0.0.1
+schema: v1
+prompts:
+  - name: Prompt 1
+    description: New prompt for code generation
+    prompt: Always give full code that is fully optimized , efficient and well-documented, as compact as possible

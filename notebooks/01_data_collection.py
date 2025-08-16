@@ -54,30 +54,32 @@ async def collect_yahoo_async():
         print("[INFO] Calculating technical indicators...")
         
         # ATR (Average True Range) - 14 period
-        hist_df['atr_14'] = ta.volatility.average_true_range(
+        hist_df['atr_14'] = ta.volatility.AverageTrueRange(
             hist_df['high'], hist_df['low'], hist_df['close'], window=14
-        )
+        ).average_true_range()
         
         # RSI (Relative Strength Index) - 14 period  
-        hist_df['rsi_14'] = ta.momentum.rsi(hist_df['close'], window=14)
+        hist_df['rsi_14'] = ta.momentum.RSIIndicator(hist_df['close'], window=14).rsi()
         
         # Simple Moving Averages
         hist_df['sma_20'] = ta.trend.sma_indicator(hist_df['close'], window=20)
         hist_df['sma_50'] = ta.trend.sma_indicator(hist_df['close'], window=50)
         
         # Exponential Moving Averages
-        hist_df['ema_12'] = ta.trend.ema_indicator(hist_df['close'], window=12)
-        hist_df['ema_26'] = ta.trend.ema_indicator(hist_df['close'], window=26)
+        hist_df['ema_12'] = ta.trend.EMAIndicator(hist_df['close'], window=12).ema_indicator()
+        hist_df['ema_26'] = ta.trend.EMAIndicator(hist_df['close'], window=26).ema_indicator()
         
         # MACD
-        hist_df['macd'] = ta.trend.macd(hist_df['close'])
-        hist_df['macd_signal'] = ta.trend.macd_signal(hist_df['close'])
-        hist_df['macd_histogram'] = ta.trend.macd_diff(hist_df['close'])
+        macd_indicator = ta.trend.MACD(hist_df['close'])
+        hist_df['macd'] = macd_indicator.macd()
+        hist_df['macd_signal'] = macd_indicator.macd_signal()
+        hist_df['macd_histogram'] = macd_indicator.macd_diff()
         
         # Bollinger Bands
-        hist_df['bb_high'] = ta.volatility.bollinger_hband(hist_df['close'])
-        hist_df['bb_low'] = ta.volatility.bollinger_lband(hist_df['close'])
-        hist_df['bb_mid'] = ta.volatility.bollinger_mavg(hist_df['close'])
+        bb_indicator = ta.volatility.BollingerBands(hist_df['close'])
+        hist_df['bb_high'] = bb_indicator.bollinger_hband()
+        hist_df['bb_low'] = bb_indicator.bollinger_lband()
+        hist_df['bb_mid'] = bb_indicator.bollinger_mavg()
         
         # Volume indicators
         hist_df['volume_sma'] = ta.trend.sma_indicator(hist_df['volume'], window=20)
@@ -428,11 +430,27 @@ async def main():
     print("\n[INFO] Generating comprehensive markdown report...")
     markdown_report = generate_markdown_report(yahoo_df, yahoo_price, coinmarketcap_data, investing_df, yahoo_indicators)
     
-    # Save the markdown report
-    with open('../complete_bitcoin_data.md', 'w', encoding='utf-8') as f:
-        f.write(markdown_report)
-    
-    print(f"[OK] Complete Bitcoin data report saved to: {os.path.abspath('../complete_bitcoin_data.md')}")
+    # Save markdown report
+    try:
+        markdown_path = os.path.abspath('complete_bitcoin_data.md')
+        with open('complete_bitcoin_data.md', 'w', encoding='utf-8') as f:
+            f.write(markdown_report)
+        print(f"[OK] Markdown report generated: {markdown_path}")
+    except Exception as e:
+        print(f"[ERROR] Failed to save report: {e}")
+
+    # Save data files
+    print("\n[INFO] Saving data files...")
+    if yahoo_df is not None:
+        yahoo_df.to_csv(os.path.join('..', 'data', 'btc_yahoo_raw.csv'), index=False)
+        print("[OK] Yahoo Finance data saved")
+    if coinmarketcap_data is not None:
+        with open(os.path.join('..', 'data', 'btc_coinmarketcap_current.json'), 'w') as f:
+            json.dump(coinmarketcap_data, f, indent=2, default=str)
+        print("[OK] CoinMarketCap data saved")
+    if investing_df is not None:
+        investing_df.to_csv(os.path.join('..', 'data', 'btc_investing_raw.csv'), index=False)
+        print("[OK] Investing.com data saved")
     
     # All data is now saved in the comprehensive markdown report
     # No need for separate CSV or JSON files

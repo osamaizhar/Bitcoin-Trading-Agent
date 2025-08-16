@@ -5,6 +5,7 @@ requests
 pywhatkit
 google-auth
 google-api-python-client
+gspread
 groq
 python-dotenv
 jupyter
