@@ -212,4 +212,5 @@ data/
 logs/
 *.key
 *.pem
-service_account.json
+google_service_account.json
+

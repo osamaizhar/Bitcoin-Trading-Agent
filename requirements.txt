@@ -21,3 +21,4 @@ fake-useragent
 requests-html
 pycoingecko
 nest_asyncio
+python-binance

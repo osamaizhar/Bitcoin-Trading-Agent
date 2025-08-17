@@ -1,4 +1,5 @@
 """
+Module 1 : Data Collection
 Bitcoin Trading Agent - Optimized Data Collection Module
 Async parallel data collection from Yahoo Finance, CoinMarketCap, and Investing.com
 """
