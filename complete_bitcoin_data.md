@@ -1,12 +1,11 @@
 # Complete Bitcoin Data Collection Report
 
-Generated on: 2025-08-16 20:28:42
+Generated on: 2025-08-21 20:53:44
 
 This report consolidates Bitcoin price data from multiple sources for comprehensive analysis.
 
 ## Table of Contents
 - [Data Sources Summary](#data-sources-summary)
-- [Investing.com Data](#investingcom-data)
 - [Yahoo Finance Data](#yahoo-finance-data)
 - [CoinMarketCap Data](#coinmarketcap-data)
 - [Combined Dataset](#combined-dataset)
@@ -14,36 +13,11 @@ This report consolidates Bitcoin price data from multiple sources for comprehens
 
 ## Data Sources Summary
 
-Total data sources processed: 3
+Total data sources processed: 2
 
-- **Investing.com**: Historical Bitcoin price data via web scraping
 - **Yahoo Finance**: Historical price data via yfinance API
 - **CoinMarketCap**: Current market data via API
 - **Combined Dataset**: Standardized data from all sources
-
-## Investing.com Data
-
-**Source**: https://www.investing.com/crypto/bitcoin/historical-data
-**Method**: Web scraping via Crawl4AI
-
-**Records**: 32 data points
-**Date Range**: Jul 16, 2025 to Aug 16, 2025
-**Latest Price**: 117785.8
-
-### Recent Data (Last 10 Records)
-
-| Date | Price | Open | High | Low | Volume | Change % |
-|------|-------|------|------|-----|--------|----------|
-| Aug 16, 2025 | 117785.8 | 117,356.3 | 117,914.9 | 117,195.6 | 33.72K | +0.37% |
-| Aug 15, 2025 | 117356.3 | 118,314.1 | 119,231.9 | 116,816.8 | 45.23K | -0.81% |
-| Aug 14, 2025 | 118314.2 | 123,313.6 | 124,436.8 | 117,275.1 | 86.59K | -4.06% |
-| Aug 13, 2025 | 123323.4 | 120,138.4 | 123,651.8 | 118,959.9 | 76.09K | +2.64% |
-| Aug 12, 2025 | 120146.2 | 118,689.6 | 120,317.2 | 118,217.4 | 56.86K | +1.23% |
-| Aug 11, 2025 | 118689.6 | 119,291.8 | 122,319.5 | 118,242.5 | 81.13K | -0.50% |
-| Aug 10, 2025 | 119287.0 | 116,468.4 | 119,305.3 | 116,468.4 | 46.65K | +2.42% |
-| Aug 09, 2025 | 116471.6 | 116,676.5 | 117,893.0 | 116,357.7 | 34.33K | -0.18% |
-| Aug 08, 2025 | 116676.3 | 117,480.5 | 117,625.1 | 115,917.8 | 39.88K | -0.68% |
-| Aug 07, 2025 | 117480.5 | 115,002.1 | 117,628.4 | 114,267.3 | 47.52K | +2.16% |
 
 ## Yahoo Finance Data
 
@@ -52,42 +26,42 @@ Total data sources processed: 3
 **Symbol**: BTC-USD
 
 **Records**: 182 data points
-**Date Range**: 2025-02-16 to 2025-08-16
-**Current Price**: $117,848.27
+**Date Range**: 2025-02-21 to 2025-08-21
+**Current Price**: $112,874.22
 
 ### Recent Data (Last 10 Records)
 
 | Date | Open | High | Low | Close | Volume |
 |------|------|------|-----|-------|--------|
-| 2025-08-16 | $117,411.22 | $117,948.86 | $117,355.82 | $117,848.27 | 58,344,734,720 |
+| 2025-08-21 | $114,269.48 | $114,691.30 | $112,708.09 | $112,874.22 | 60,391,251,968 |
+| 2025-08-20 | $112,828.02 | $114,625.80 | $112,387.96 | $114,274.74 | 67,993,811,526 |
+| 2025-08-19 | $116,241.86 | $116,764.50 | $112,730.40 | $112,831.18 | 71,657,600,353 |
+| 2025-08-18 | $117,453.91 | $117,614.17 | $114,723.68 | $116,252.31 | 72,787,808,090 |
+| 2025-08-17 | $117,492.79 | $118,595.77 | $117,279.52 | $117,453.06 | 45,852,169,525 |
+| 2025-08-16 | $117,398.42 | $117,996.06 | $117,271.95 | $117,491.35 | 48,036,922,378 |
 | 2025-08-15 | $118,365.78 | $119,332.31 | $116,864.57 | $117,398.35 | 68,665,353,159 |
 | 2025-08-14 | $123,339.40 | $124,457.12 | $117,254.88 | $118,359.58 | 104,055,627,395 |
 | 2025-08-13 | $120,168.98 | $123,682.45 | $118,939.63 | $123,344.06 | 90,904,808,795 |
 | 2025-08-12 | $118,717.66 | $120,302.47 | $118,228.72 | $120,172.91 | 72,803,657,984 |
-| 2025-08-11 | $119,306.81 | $122,321.09 | $118,159.03 | $118,731.45 | 90,528,784,177 |
-| 2025-08-10 | $116,497.72 | $119,320.71 | $116,485.16 | $119,306.76 | 64,755,458,694 |
-| 2025-08-09 | $116,678.27 | $117,906.61 | $116,363.84 | $116,500.36 | 54,004,312,429 |
-| 2025-08-08 | $117,505.50 | $117,689.20 | $115,917.46 | $116,688.73 | 59,713,005,166 |
-| 2025-08-07 | $115,030.05 | $117,676.91 | $114,279.71 | $117,496.90 | 64,051,649,681 |
 
 ### Technical Indicators (Current Values)
 
 **Trading Signals and Market Analysis:**
 
-- **ATR (14)**: $2,874.67 - Average True Range for stop-loss calculations
-- **RSI (14)**: 52.1 - Relative Strength Index (Neutral)
-- **SMA 20**: $116,979.47 - 20-period Simple Moving Average
-- **SMA 50**: $115,385.25 - 50-period Simple Moving Average
-- **MACD**: 977.65 - Moving Average Convergence Divergence
-- **MACD Signal**: 943.04 - MACD Signal Line
+- **ATR (14)**: $2,764.77 - Average True Range for stop-loss calculations
+- **RSI (14)**: 41.2 - Relative Strength Index (Neutral)
+- **SMA 20**: $116,508.09 - 20-period Simple Moving Average
+- **SMA 50**: $116,103.69 - 50-period Simple Moving Average
+- **MACD**: -320.98 - Moving Average Convergence Divergence
+- **MACD Signal**: 396.10 - MACD Signal Line
 
 ### Market Analysis Summary
 
-- **Price vs SMA 20**: $+868.80 (Above moving average)
-- **Price vs SMA 50**: $+2,463.03 (Above moving average)
+- **Price vs SMA 20**: $-3,633.87 (Below moving average)
+- **Price vs SMA 50**: $-3,229.47 (Below moving average)
 - **Trend Signal**: Bullish (SMA 20 > SMA 50)
 - **RSI Signal**: Neutral - Hold/Monitor
-- **MACD Signal**: Bullish (MACD above signal line)
+- **MACD Signal**: Bearish (MACD below signal line)
 
 ## CoinMarketCap Data
 
@@ -97,37 +71,36 @@ Total data sources processed: 3
 
 ### Current Market Information
 
-- **Price**: $117,848.27
-- **24h Volume**: $58,344,733,521
-- **Market Cap**: $2,346,030,564,673
-- **1h Change**: 0.08%
-- **24h Change**: 0.45%
-- **7d Change**: 0.85%
-- **Last Updated**: 2025-08-16T15:27:00.000Z
+- **Price**: $112,909.60
+- **24h Volume**: $60,967,321,575
+- **Market Cap**: $2,247,971,829,072
+- **1h Change**: -0.31%
+- **24h Change**: -0.65%
+- **7d Change**: -4.38%
+- **Last Updated**: 2025-08-21T15:53:00.000Z
 
 ## Combined Dataset
 
 **Description**: Standardized and merged data from all available sources
 **Purpose**: Comprehensive dataset for analysis and trading strategies
 
-**Total Records**: 214 data points
-**Date Range**: 2025-02-16 00:00:00+00:00 to 2025-08-16 00:00:00+00:00
+**Total Records**: 182 data points
+**Date Range**: 2025-02-21 00:00:00+00:00 to 2025-08-21 00:00:00+00:00
 
 ### Combined Data Distribution
-- **yahoo**: 182 records (85.0%)
-- **investing**: 32 records (15.0%)
+- **yahoo**: 182 records (100.0%)
 
 ## Data Quality Summary
 
 ### Quality Metrics
-- **Total Records**: 214
-- **Total Columns**: 29
+- **Total Records**: 182
+- **Total Columns**: 22
 
 ### Price Statistics
-- **Mean Price**: $100384.35
+- **Mean Price**: $100883.64
 - **Min Price**: $76271.95
 - **Max Price**: $123344.06
-- **Standard Deviation**: $12762.15
+- **Standard Deviation**: $12957.33
 
 ### Data Anomalies
 - **Negative/Zero Prices**: 0
@@ -137,4 +110,4 @@ Total data sources processed: 3
 
 *Report generated by Bitcoin Trading Agent - Data Collection Module*
 
-*Timestamp: 2025-08-16 20:28:42*
+*Timestamp: 2025-08-21 20:53:44*
