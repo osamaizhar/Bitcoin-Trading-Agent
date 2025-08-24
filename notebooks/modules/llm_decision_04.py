@@ -236,14 +236,14 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
 """
 
         response = client.chat.completions.create(
-            model="moonshotai/kimi-k2-instruct",  # Specify LLM model
+            model="openai/gpt-oss-120b",  # Specify LLM model
             messages=[
                 {"role": "system", "content": system_prompt}  # Send system prompt to LLM
             ],
-            max_tokens=350  # Limit response length
+            #max_tokens=350  # Limit response length
         )
         response_text = response.choices[0].message.content.strip()  # Get LLM response text
-        print(f"[LLM RAW RESPONSE] {response_text}")  # Print raw LLM response for debugging
+        #print(f"[LLM RAW RESPONSE] {response_text}")  # Print raw LLM response for debugging
         decision = extract_json_from_response(response_text)  # Extract JSON decision from response
         if decision:
             print(f"[LLM] Decision: {decision['action']} ({decision['confidence']}%) - {decision['rationale']}")  # Print decision
