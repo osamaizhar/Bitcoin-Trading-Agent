@@ -518,6 +518,10 @@ def manage_trades(portfolio, active_trades, llm_suggestion):
     last_price = sma_20 if sma_20 else current_price
     decisions = []  # list of trade actions
 
+    '''
+    Calls check_dca_trigger to determine if a DCA buy condition is met (e.g., price drop exceeds the configured percentage).
+    If the condition is met and the portfolio has enough USDT, the decision is added to the decisions list.
+    '''
     # 1. Check for DCA buy
     dca_decision = check_dca_trigger(latest_data, config, last_price, current_price)
     if dca_decision and portfolio['usdt'] >= dca_decision['amount']:
@@ -547,33 +551,72 @@ def manage_trades(portfolio, active_trades, llm_suggestion):
 
     return decisions, active_trades
 
-if __name__ == "__main__":
-    """
-    Test section for standalone run:
-    - Uses a mock portfolio
-    - Generates fake LLM suggestion
-    - Runs through trade manager
-    - Tries to execute a buy order if condition met
-    """
-    print("Testing 04_strategy_manager module with latest markdown data...")
-    try:
-        # Create fake portfolio and LLM suggestion
-        portfolio = {'btc': 0.0, 'usdt': 100.0}
-        active_trades = []
-        llm_suggestion = {'action': 'BUY', 'confidence': 80, 'rationale': 'Test trade trigger'}
+# if __name__ == "__main__":
+#     """
+#     Test section for standalone run:
+#     - Uses a mock portfolio
+#     - Generates fake LLM suggestion
+#     - Runs through trade manager
+#     - Tries to execute a buy order if condition met
+#     """
+#     print("Testing 04_strategy_manager module with latest markdown data...")
+#     try:
+#         # Create fake portfolio and LLM suggestion
+#         portfolio = {'btc': 0.0, 'usdt': 100.0}
+#         active_trades = []
+#         llm_suggestion = {'action': 'BUY', 'confidence': 80, 'rationale': 'Test trade trigger'}
 
-        # Run strategy manager
-        decisions, active_trades = manage_trades(portfolio, active_trades, llm_suggestion)
-        print(f"[TEST] Trade decisions: {decisions}")
-        print(f"[TEST] Active trades: {active_trades}")
+#         # Run strategy manager
+#         decisions, active_trades = manage_trades(portfolio, active_trades, llm_suggestion)
+#         print(f"[TEST] Trade decisions: {decisions}")
+#         print(f"[TEST] Active trades: {active_trades}")
 
-        # Try to actually execute a real buy trade if decision says so
-        from trade_executor_03 import initialize_binance_client, execute_buy
-        client = initialize_binance_client()
-        for decision in decisions:
-            if decision['action'] == 'BUY':
-                trade_record = execute_buy(client, decision['amount'], active_trades[-1]['entry_price'], decision['trade_type'])
-                print(f"[TEST] Real trade executed: {trade_record}")
-    except Exception as e:
-        print(f"[TEST ERROR] {e}")
- 
+#         # Try to actually execute a real buy trade if decision says so
+#         from trade_executor_03 import initialize_binance_client, execute_buy
+#         client = initialize_binance_client()
+#         for decision in decisions:
+#             if decision['action'] == 'BUY':
+#                 trade_record = execute_buy(client, decision['amount'], active_trades[-1]['entry_price'], decision['trade_type'])
+#                 print(f"[TEST] Real trade executed: {trade_record}")
+#     except Exception as e:
+#         print(f"[TEST ERROR] {e}")
+
+# ------------- Test code v2 , no fake portfolio -------------------- ----------------------
+# if __name__ == "__main__":
+#     """
+#     Live test section – runs against **real Binance account**.
+#     - No mock portfolio or fake LLM suggestion
+#     - Reads current portfolio from Binance
+#     - Uses live LLM decision
+#     - Executes real trades if BUY is signalled
+#     """
+#     import os
+#     from trade_executor_03 import initialize_binance_client, get_portfolio
+
+#     print("Live test: running strategy_manager with real Binance data…")
+#     try:
+#         client = initialize_binance_client()
+#         portfolio = get_portfolio(client)          # ← actual balances
+#         active_trades = []                           # start clean
+
+#         # --- live LLM decision -------------------------------------------------
+#         llm_suggestion = live_llm_decision()       # ← your real call goes here
+#         # -----------------------------------------------------------------------
+
+#         decisions, active_trades = manage_trades(portfolio, active_trades,
+#                                                  llm_suggestion)
+
+#         print(f"[LIVE] Trade decisions: {decisions}")
+#         print(f"[LIVE] Active trades: {active_trades}")
+
+#         # execute any BUY signals
+#         from trade_executor_03 import execute_buy
+#         for d in decisions:
+#             if d['action'] == 'BUY':
+#                 rec = execute_buy(client, d['amount'],
+#                                   active_trades[-1]['entry_price'],
+#                                   d['trade_type'])
+#                 print(f"[LIVE] Buy executed: {rec}")
+
+#     except Exception as e:
+#         print(f"[LIVE ERROR] {e}")
