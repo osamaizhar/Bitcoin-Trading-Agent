@@ -22,3 +22,5 @@ requests-html
 pycoingecko
 nest_asyncio
 python-binance
+schedule
+matplotlib

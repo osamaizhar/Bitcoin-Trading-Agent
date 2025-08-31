@@ -192,35 +192,118 @@ def extract_json_from_response(response_text): # To parse json from LLM Response
             print(f"[RAW RESPONSE] {response_text}")  # Print raw response for debugging
             return None  # Return None if no JSON found
 
-def get_llm_decision(md_path="complete_bitcoin_data.md", use_google_sheet=False):
+# def get_llm_decision(md_path="complete_bitcoin_data.md", use_google_sheet=False):
+#     try:
+#         client = initialize_groq_client()  # Initialize Groq client for LLM
+#         md_content = read_md_market_data(md_path)  # Read full market data from markdown
+#         binance_client = initialize_binance_client()  # Initialize Binance client
+#         portfolio = get_portfolio(binance_client)  # Get current Binance portfolio
+#         trade_history = read_trade_log_google_sheet() if use_google_sheet else read_trade_log_csv()  # Get recent trade history
+
+#         # # Print out all data being fed to the LLM
+#         # print("\n========== LLM INPUT DATA ==========")
+#         # print("----- MARKET DATA REPORT -----")
+#         # print(md_content)
+#         # print("\n----- BINANCE PORTFOLIO STATUS -----")
+        
+#         # print(json.dumps(portfolio, indent=2))
+#         # print(f"\n----- RECENT TRADE HISTORY (last {len(trade_history)} trades) -----")
+#         # print(json.dumps(trade_history, indent=2))
+#         # print("====================================\n")
+
+#         if not md_content:
+#             raise Exception("No market data found in markdown file.")  # Error if no market data
+
+#         # Compose everything into the system prompt for LLM
+#         system_prompt = f"""
+# You are a Bitcoin trading assistant. Analyze the following comprehensive market data report, current Binance portfolio status, and recent trade history. Suggest a trading action (BUY, SELL, or HOLD) with a confidence score (0-100). Provide a brief rationale.
+
+# MARKET DATA REPORT:
+# {md_content}
+
+# BINANCE PORTFOLIO STATUS:
+# {json.dumps(portfolio, indent=2)}
+
+# RECENT TRADE HISTORY (last {len(trade_history)} trades):
+# {json.dumps(trade_history, indent=2)}
+
+# Respond ONLY with valid JSON (no markdown, no explanation, no code block markers):
+
+# {{
+#     "action": "BUY|SELL|HOLD",
+#     "confidence": <0-100>,
+#     "rationale": "<brief explanation>"
+# }}
+# """
+
+#         response = client.chat.completions.create(
+#             model="openai/gpt-oss-120b",  # Specify LLM model
+#             messages=[
+#                 {"role": "system", "content": system_prompt}  # Send system prompt to LLM
+#             ],
+#             #max_tokens=350  # Limit response length
+#         )
+#         response_text = response.choices[0].message.content.strip()  # Get LLM response text
+#         #print(f"[LLM RAW RESPONSE] {response_text}")  # Print raw LLM response for debugging
+#         decision = extract_json_from_response(response_text)  # Extract JSON decision from response
+#         if decision:
+#             print(f"[LLM] Decision: {decision['action']} ({decision['confidence']}%) - {decision['rationale']}")  # Print decision
+#             return decision  # Return parsed decision
+#         else:
+#             # Fallback: return neutral decision if parsing fails
+#             return {
+#                 "action": "HOLD",
+#                 "confidence": 50,
+#                 "rationale": "LLM response parsing failed, defaulting to HOLD."
+#             }
+#     except Exception as e:
+#         print(f"[ERROR] LLM decision failed: {e}")  # Print error if LLM call fails
+#         return {
+#             "action": "HOLD",
+#             "confidence": 50,
+#             "rationale": "LLM decision failed, defaulting to HOLD."
+#         }
+def get_llm_decision(
+    md_path="complete_bitcoin_data.md",
+    portfolio=None,
+    trade_history=None,
+    use_google_sheet=False
+):
+    """
+    Get trading decision from LLM using market data, portfolio, and trade history.
+    For backtest, pass in portfolio and trade_history directly.
+    """
+    count = 0  # ------ setting to only print data passed into llm once
+    if portfolio is None:
+        portfolio = get_portfolio(binance_client)  # Get current Binance portfolio
+
     try:
         client = initialize_groq_client()  # Initialize Groq client for LLM
         md_content = read_md_market_data(md_path)  # Read full market data from markdown
-        binance_client = initialize_binance_client()  # Initialize Binance client
-        portfolio = get_portfolio(binance_client)  # Get current Binance portfolio
-        trade_history = read_trade_log_google_sheet() if use_google_sheet else read_trade_log_csv()  # Get recent trade history
 
-        # Print out all data being fed to the LLM
-        print("\n========== LLM INPUT DATA ==========")
-        print("----- MARKET DATA REPORT -----")
-        print(md_content)
-        print("\n----- BINANCE PORTFOLIO STATUS -----")
-        print(json.dumps(portfolio, indent=2))
-        print(f"\n----- RECENT TRADE HISTORY (last {len(trade_history)} trades) -----")
-        print(json.dumps(trade_history, indent=2))
-        print("====================================\n")
+        # Use provided portfolio/trade_history, or fallback to reading from APIs
+        if portfolio is None:
+            if use_google_sheet:
+                # Optionally fetch from Google Sheet if desired
+                portfolio = {}  # Replace with Google Sheet fetch if needed
+            else:
+                portfolio = {}
+        if trade_history is None:
+            if use_google_sheet:
+                trade_history = read_trade_log_google_sheet()
+            else:
+                trade_history = []
 
         if not md_content:
-            raise Exception("No market data found in markdown file.")  # Error if no market data
+            raise Exception("No market data found in markdown file.")
 
-        # Compose everything into the system prompt for LLM
         system_prompt = f"""
-You are a Bitcoin trading assistant. Analyze the following comprehensive market data report, current Binance portfolio status, and recent trade history. Suggest a trading action (BUY, SELL, or HOLD) with a confidence score (0-100). Provide a brief rationale.
+You are a Bitcoin trading assistant. Analyze the following comprehensive market data report, current portfolio status, and recent trade history. Suggest a trading action (BUY, SELL, or HOLD) with a confidence score (0-100). Provide a brief rationale.
 
 MARKET DATA REPORT:
 {md_content}
 
-BINANCE PORTFOLIO STATUS:
+PORTFOLIO STATUS:
 {json.dumps(portfolio, indent=2)}
 
 RECENT TRADE HISTORY (last {len(trade_history)} trades):
@@ -234,35 +317,45 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
     "rationale": "<brief explanation>"
 }}
 """
+        if count == 0:
+                    # Print out all data being fed to the LLM
+            print("\n========== LLM INPUT DATA ==========")
+            print("----- MARKET DATA REPORT -----")
+            print(md_content)
+            print("\n----- BINANCE PORTFOLIO STATUS -----")
+            
+            print(json.dumps(portfolio, indent=2))
+            print(f"\n----- RECENT TRADE HISTORY (last {len(trade_history)} trades) -----")
+            print(json.dumps(trade_history, indent=2))
+            print("====================================\n")
+            print(f"System Prompt : {system_prompt}")
+            print(f"LLM Input Data Count: {count}")
+            count+=1
 
         response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",  # Specify LLM model
+            model="openai/gpt-oss-120b",
             messages=[
-                {"role": "system", "content": system_prompt}  # Send system prompt to LLM
+                {"role": "system", "content": system_prompt}
             ],
-            #max_tokens=350  # Limit response length
         )
-        response_text = response.choices[0].message.content.strip()  # Get LLM response text
-        #print(f"[LLM RAW RESPONSE] {response_text}")  # Print raw LLM response for debugging
-        decision = extract_json_from_response(response_text)  # Extract JSON decision from response
+        response_text = response.choices[0].message.content.strip()
+        decision = extract_json_from_response(response_text)
         if decision:
-            print(f"[LLM] Decision: {decision['action']} ({decision['confidence']}%) - {decision['rationale']}")  # Print decision
-            return decision  # Return parsed decision
+            print(f"[LLM] Decision: {decision['action']} ({decision['confidence']}%) - {decision['rationale']}")
+            return decision
         else:
-            # Fallback: return neutral decision if parsing fails
             return {
                 "action": "HOLD",
                 "confidence": 50,
                 "rationale": "LLM response parsing failed, defaulting to HOLD."
             }
     except Exception as e:
-        print(f"[ERROR] LLM decision failed: {e}")  # Print error if LLM call fails
+        print(f"[ERROR] LLM decision failed: {e}")
         return {
             "action": "HOLD",
             "confidence": 50,
             "rationale": "LLM decision failed, defaulting to HOLD."
         }
-
 if __name__ == "__main__":
     print("Testing 05_llm_decision module with full context...")  # Indicate test start
     decision = get_llm_decision(use_google_sheet=True)  # Run decision function with Google Sheet
