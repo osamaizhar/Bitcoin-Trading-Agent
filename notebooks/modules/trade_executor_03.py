@@ -696,7 +696,7 @@ async def execute_buy(client, amount_usd, current_price, trade_type="DCA"):
             'amount_usd': amount_usd,
             'btc_balance': btc_balance,
             'btc_value_usd': btc_value_usd,
-            'profit_loss_usd': ''  # Not applicable for buy
+            'profit_loss_usd': ''  # Not applicable for buy , only when selling
         }
         await log_trade(trade_record)
         print(f"[OK] Buy executed: approx {approx_quantity:.6f} BTC at ${current_price:,.2f} ({trade_type}) for ${amount_usd}")

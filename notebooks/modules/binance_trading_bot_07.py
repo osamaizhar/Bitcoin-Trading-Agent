@@ -23,10 +23,10 @@ import schedule
 import time
 from datetime import datetime
 import pandas as pd
-from trade_executor import initialize_binance_client, get_portfolio, execute_buy, execute_sell
-from strategy_manager import manage_trades
-from llm_decision import get_llm_decision
-from notification_manager import send_telegram_notification, schedule_weekly_report
+from trade_executor_03 import initialize_binance_client, get_portfolio, execute_buy, execute_sell
+from strategy_manager_05 import manage_trades
+from llm_decision_04 import get_llm_decision
+# from notification_manager_06 import send_telegram_notification, schedule_weekly_report
 from data_collection import main as collect_data
 from config_manager import load_dotenv
 
@@ -36,46 +36,47 @@ async def trading_loop():
     client = initialize_binance_client()
     # Track active trades for stop-loss monitoring
     active_trades = []
-    
+
     while True:
         print(f"\n[INFO] Starting trading cycle at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
-        # Collect market data
+
+        # Collect market data (update: expects latest structure)
         yahoo_df, current_price, indicators = await collect_data()
         if yahoo_df is None or current_price is None:
             print("[ERROR] Data collection failed. Retrying in 30 minutes.")
             await asyncio.sleep(1800)
             continue
-        
-        # Get current portfolio balance
+
+        # Get current portfolio balance (latest structure: {'btc': float, 'usdt': float})
         portfolio = get_portfolio(client)
         print(f"[INFO] Portfolio: {portfolio['btc']:.6f} BTC, ${portfolio['usdt']:,.2f} USDT")
-        
-        # Get LLM trading suggestion
-        llm_suggestion = get_llm_decision(yahoo_df, current_price, indicators)
-        
-        # Generate trade decisions based on strategies
-        decisions, active_trades = manage_trades(yahoo_df, current_price, portfolio, active_trades, llm_suggestion)
-        
+
+        # Get LLM trading suggestion (full context: market data, portfolio, trade history)
+        llm_suggestion = get_llm_decision(use_google_sheet=True)
+
+        # Generate trade decisions based on strategies (latest: expects full context)
+        decisions, active_trades = manage_trades(portfolio, active_trades, llm_suggestion)
+
         # Execute trade decisions
         for decision in decisions:
             if decision['action'] == 'BUY' and portfolio['usdt'] >= decision['amount']:
                 # Execute buy order if sufficient USD balance
-                trade_record = execute_buy(client, decision['amount'], current_price, decision['trade_type'])
+                trade_record = execute_buy(client, decision['amount'], active_trades[-1]['entry_price'], decision['trade_type'])
                 if trade_record:
-                    send_telegram_notification(trade_record)
+                    # send_telegram_notification(trade_record)  # Notification code commented out
+                    pass
             elif decision['action'] == 'SELL' and portfolio['btc'] >= decision['quantity']:
                 # Execute sell order if sufficient BTC balance
-                trade_record = execute_sell(client, decision['quantity'], current_price, decision['trade_type'])
+                trade_record = execute_sell(client, decision['quantity'], active_trades[-1]['entry_price'], decision['trade_type'])
                 if trade_record:
-                    send_telegram_notification(trade_record)
+                    # send_telegram_notification(trade_record)  # Notification code commented out
                     # Remove sold trade from active trades
                     active_trades = [t for t in active_trades if t['quantity'] != decision['quantity']]
-        
-        # Schedule weekly report
-        schedule_weekly_report(portfolio, current_price, '../data/trade_log.csv')
+
+        # Schedule weekly report (commented out)
+        # schedule_weekly_report(portfolio, current_price, '../data/trade_log.csv')
         schedule.run_pending()
-        
+
         print(f"[INFO] Cycle complete. Sleeping for 30 minutes.")
         await asyncio.sleep(1800)  # 30 minutes
 
@@ -87,4 +88,4 @@ if __name__ == "__main__":
         asyncio.run(trading_loop())
         print("[TEST] One real trading cycle completed")
     except Exception as e:
-        print(f"[TEST ERROR] {e}")
+        print(f"[ERROR] Exception during trading loop: {e}")
