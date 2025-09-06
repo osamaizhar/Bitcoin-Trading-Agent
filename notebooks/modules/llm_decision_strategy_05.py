@@ -19,6 +19,8 @@ Usage (in trading bot sim loop):
 import os
 import re
 import json
+import time
+
 from datetime import datetime
 from groq import Groq
 from dotenv import load_dotenv
@@ -137,16 +139,125 @@ def build_llm_context(portfolio, active_trades, latest_data, config, last_10_tra
     }
     return context
 
+# def get_llm_decision(context):
+#     """
+#     Query Groq LLM for trading decision using full context.
+#     Returns dict: {action, confidence, rationale}
+#     """
+#     try:
+#         client = initialize_groq_client()
+#         # Compose prompt for LLM
+#         system_prompt = f"""
+# You are an expert Bitcoin trading algorithm designed to maximize profits on hourly timeframes. Analyze the provided market data and suggest the most profitable action (BUY, SELL, or HOLD) with a confidence score (0-100).
+
+# YOUR PRIMARY OBJECTIVE: Generate maximum profit on EACH trade by identifying high-probability setups with clear entry/exit points.
+
+# TRADING RULES:
+# 1. ONLY BUY when there are strong signals of an imminent upward price movement (2%+ potential within hours)
+# 2. ONLY SELL when:
+#    - You've captured at least 1.5% profit, OR
+#    - Clear reversal signals indicate the uptrend is ending, OR
+#    - Stop conditions are triggered to protect capital
+# 3. DEFAULT to HOLD unless a high-confidence (70%+) opportunity exists
+# 4. AVOID frequent trading - quality over quantity is essential
+
+# TECHNICAL INDICATORS - BUY WHEN:
+# - RSI crosses above 30 from oversold territory
+# - Price bounces off support with increasing volume
+# - MACD shows bullish crossover or divergence
+# - Price is testing key support with decreasing selling pressure
+
+# TECHNICAL INDICATORS - SELL WHEN:
+# - RSI reaches overbought territory (70+)
+# - Price hits resistance with declining momentum
+# - MACD shows bearish crossover or divergence
+# - Price action shows reversal patterns at resistance
+
+# PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision.
+
+# CONTEXT:
+# {json.dumps(context, indent=2)}
+
+# Respond ONLY with valid JSON (no markdown, no explanation, no code block markers):
+
+# {{
+#     "action": "BUY|SELL|HOLD",
+#     "confidence": <0-100>,
+#     "rationale": "<brief explanation>"
+# }}
+# """
+#         response = client.chat.completions.create(
+#             model="meta-llama/llama-4-maverick-17b-128e-instruct",
+#             messages=[
+#                 {"role": "system", "content": system_prompt}
+#             ],
+#         )
+#         response_text = response.choices[0].message.content.strip()
+#         decision = extract_json_from_response(response_text)
+#         if decision:
+#             print(f"[LLM] Decision: {decision['action']} ({decision['confidence']}%) - {decision['rationale']}")
+#             return decision
+#         else:
+#             return {
+#                 "action": "HOLD",
+#                 "confidence": 50,
+#                 "rationale": "LLM response parsing failed, defaulting to HOLD."
+#             }
+#     except Exception as e:
+#         print(f"[ERROR] LLM decision failed: {e}")
+#         return {
+#             "action": "HOLD",
+#             "confidence": 50,
+#             "rationale": "LLM decision failed, defaulting to HOLD."
+#         }
+
+# ---------------------------- Updated with reducded print -------------------------------
+def track_time(func):
+    def wrapper(*args, **kwargs):
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        end = time.perf_counter()
+        print(f"[Time Tracker] `{func.__name__}` took {end - start:.4f} seconds")
+        return result
+
+    return wrapper
+
+@track_time
 def get_llm_decision(context):
     """
     Query Groq LLM for trading decision using full context.
-    Returns dict: {action, confidence, rationale}
+    Returns dict: {action, rationale}
     """
     try:
         client = initialize_groq_client()
         # Compose prompt for LLM
         system_prompt = f"""
-You are a Bitcoin trading assistant. Analyze the following context and suggest a trading action (BUY, SELL, or HOLD) with a confidence score (0-100). Provide a brief rationale.
+You are an expert Bitcoin trading algorithm designed to maximize profits on hourly timeframes. Analyze the provided market data and suggest the most profitable action (BUY, SELL, or HOLD) with a confidence score (0-100).
+
+YOUR PRIMARY OBJECTIVE: Generate maximum profit on EACH trade by identifying high-probability setups with clear entry/exit points.
+
+TRADING RULES:
+1. ONLY BUY when there are strong signals of an imminent upward price movement (2%+ potential within hours)
+2. ONLY SELL when:
+   - You've captured at least 1.5% profit, OR
+   - Clear reversal signals indicate the uptrend is ending, OR
+   - Stop conditions are triggered to protect capital
+3. DEFAULT to HOLD unless a high-confidence (70%+) opportunity exists
+4. AVOID frequent trading - quality over quantity is essential
+
+TECHNICAL INDICATORS - BUY WHEN:
+- RSI crosses above 30 from oversold territory
+- Price bounces off support with increasing volume
+- MACD shows bullish crossover or divergence
+- Price is testing key support with decreasing selling pressure
+
+TECHNICAL INDICATORS - SELL WHEN:
+- RSI reaches overbought territory (70+)
+- Price hits resistance with declining momentum
+- MACD shows bearish crossover or divergence
+- Price action shows reversal patterns at resistance
+
+PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision.
 
 CONTEXT:
 {json.dumps(context, indent=2)}
@@ -160,7 +271,7 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
 }}
 """
         response = client.chat.completions.create(
-            model="openai/gpt-oss-120b",
+            model="meta-llama/llama-4-maverick-17b-128e-instruct",
             messages=[
                 {"role": "system", "content": system_prompt}
             ],
@@ -168,21 +279,22 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
         response_text = response.choices[0].message.content.strip()
         decision = extract_json_from_response(response_text)
         if decision:
-            print(f"[LLM] Decision: {decision['action']} ({decision['confidence']}%) - {decision['rationale']}")
-            return decision
+            # Only return action and rationale
+            return {
+                "action": decision.get("action"),
+                "rationale": decision.get("rationale")
+            }
         else:
             return {
                 "action": "HOLD",
-                "confidence": 50,
                 "rationale": "LLM response parsing failed, defaulting to HOLD."
             }
     except Exception as e:
-        print(f"[ERROR] LLM decision failed: {e}")
         return {
             "action": "HOLD",
-            "confidence": 50,
             "rationale": "LLM decision failed, defaulting to HOLD."
         }
+
 
 def manage_trades(portfolio, active_trades, last_10_trades):
     """
