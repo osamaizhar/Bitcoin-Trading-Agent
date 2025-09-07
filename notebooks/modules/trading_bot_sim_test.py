@@ -1810,6 +1810,7 @@ from datetime import datetime, timedelta
 import ta
 import json
 from llm_decision_strategy_05 import get_llm_decision
+from pprint import pprint
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -1960,10 +1961,11 @@ async def run_backtest():
         os.remove(trade_log_path)
 
     subsample = TRADE_INTERVAL_HOURS
-    end_date = df['date'].max()
+    start_date = df['date'].min()
+    #end_date = df['date'].max()
     duration = parse_duration(TRADE_DURATION)
-    start_date = end_date - duration
-
+    end_date = start_date + duration
+    #start_date = end_date - duration
     print(f"[INFO] Trading period: {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
     df_test = df[df['date'] >= start_date]
@@ -2022,8 +2024,9 @@ async def run_backtest():
             'portfolio': portfolio,
             'trade_history': trade_log[-10:]
         }
+        pprint(f"Context: {trade_log[-10:]}")
         decision = get_llm_decision(context)
-        print(f"LLM Decision : {decision}")
+        #print(f"LLM Decision : {decision}")
         action = decision.get('action', 'None')
         quantity = decision.get('quantity', 0)
 
