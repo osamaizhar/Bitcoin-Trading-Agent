@@ -46,21 +46,59 @@ def load_config():
         print(f"[ERROR] Failed to load config: {e}")
         return {}
 
-def parse_latest_data_from_md(md_path="complete_bitcoin_data.md"):
-    """Parse latest market data from markdown file."""
+# def parse_latest_data_from_md(md_path="complete_bitcoin_data.md"):
+#     """Parse latest market data from markdown file."""
+#     latest_data = {}
+#     try:
+#         with open(md_path, "r", encoding="utf-8") as f:
+#             content = f.read()
+#         price_match = re.search(r"\*\*Current Price\*\*: \$([0-9\.,]+)", content)
+#         if price_match:
+#             latest_data['current_price'] = float(price_match.group(1).replace(',', ''))
+#         atr_match = re.search(r"\*\*ATR \(14\)\*\*: \$([0-9\.,]+)", content)
+#         rsi_match = re.search(r"\*\*RSI \(14\)\*\*: ([0-9\.]+)", content)
+#         sma20_match = re.search(r"\*\*SMA 20\*\*: \$([0-9\.,]+)", content)
+#         sma50_match = re.search(r"\*\*SMA 50\*\*: \$([0-9\.,]+)", content)
+#         macd_match = re.search(r"\*\*MACD\*\*: ([\-0-9\.]+)", content)
+#         macd_signal_match = re.search(r"\*\*MACD Signal\*\*: ([\-0-9\.]+)", content)
+#         if atr_match:
+#             latest_data['atr_14'] = float(atr_match.group(1).replace(',', ''))
+#         if rsi_match:
+#             latest_data['rsi_14'] = float(rsi_match.group(1))
+#         if sma20_match:
+#             latest_data['sma_20'] = float(sma20_match.group(1).replace(',', ''))
+#         if sma50_match:
+#             latest_data['sma_50'] = float(sma50_match.group(1).replace(',', ''))
+#         if macd_match:
+#             latest_data['macd'] = float(macd_match.group(1))
+#         if macd_signal_match:
+#             latest_data['macd_signal'] = float(macd_signal_match.group(1))
+#         return latest_data
+#     except Exception as e:
+#         print(f"[ERROR] Failed to parse markdown data: {e}")
+#         return {}
+
+# ------------------------ v2 handles more indicators -------------------------------------
+def parse_latest_data_from_md_content(md_content):
+    """Parse latest market data from markdown content string."""
     latest_data = {}
     try:
-        with open(md_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        price_match = re.search(r"\*\*Current Price\*\*: \$([0-9\.,]+)", content)
+        price_match = re.search(r"\*\*Current Price\*\*: \$([0-9\.,]+)", md_content)
         if price_match:
             latest_data['current_price'] = float(price_match.group(1).replace(',', ''))
-        atr_match = re.search(r"\*\*ATR \(14\)\*\*: \$([0-9\.,]+)", content)
-        rsi_match = re.search(r"\*\*RSI \(14\)\*\*: ([0-9\.]+)", content)
-        sma20_match = re.search(r"\*\*SMA 20\*\*: \$([0-9\.,]+)", content)
-        sma50_match = re.search(r"\*\*SMA 50\*\*: \$([0-9\.,]+)", content)
-        macd_match = re.search(r"\*\*MACD\*\*: ([\-0-9\.]+)", content)
-        macd_signal_match = re.search(r"\*\*MACD Signal\*\*: ([\-0-9\.]+)", content)
+        atr_match = re.search(r"\*\*ATR \(14\)\*\*: \$([0-9\.,]+)", md_content)
+        rsi_match = re.search(r"\*\*RSI \(14\)\*\*: ([0-9\.]+)", md_content)
+        sma20_match = re.search(r"\*\*SMA 20\*\*: \$([0-9\.,]+)", md_content)
+        sma50_match = re.search(r"\*\*SMA 50\*\*: \$([0-9\.,]+)", md_content)
+        ema12_match = re.search(r"\*\*EMA 12\*\*: \$([0-9\.,]+)", md_content)
+        ema26_match = re.search(r"\*\*EMA 26\*\*: \$([0-9\.,]+)", md_content)
+        bb_upper_match = re.search(r"\*\*Bollinger Upper \(20\)\*\*: \$([0-9\.,]+)", md_content)
+        bb_middle_match = re.search(r"\*\*Bollinger Middle \(20\)\*\*: \$([0-9\.,]+)", md_content)
+        bb_lower_match = re.search(r"\*\*Bollinger Lower \(20\)\*\*: \$([0-9\.,]+)", md_content)
+        macd_match = re.search(r"\*\*MACD\*\*: ([\-0-9\.]+)", md_content)
+        macd_signal_match = re.search(r"\*\*MACD Signal\*\*: ([\-0-9\.]+)", md_content)
+        volume_sma20_match = re.search(r"\*\*Volume SMA 20\*\*: ([0-9\.,]+)", md_content)
+        atr_volatility_ratio_match = re.search(r"\*\*ATR Volatility Ratio\*\*: ([0-9\.]+)", md_content)
         if atr_match:
             latest_data['atr_14'] = float(atr_match.group(1).replace(',', ''))
         if rsi_match:
@@ -69,14 +107,31 @@ def parse_latest_data_from_md(md_path="complete_bitcoin_data.md"):
             latest_data['sma_20'] = float(sma20_match.group(1).replace(',', ''))
         if sma50_match:
             latest_data['sma_50'] = float(sma50_match.group(1).replace(',', ''))
+        if ema12_match:
+            latest_data['ema_12'] = float(ema12_match.group(1).replace(',', ''))
+        if ema26_match:
+            latest_data['ema_26'] = float(ema26_match.group(1).replace(',', ''))
+        if bb_upper_match:
+            latest_data['bb_upper'] = float(bb_upper_match.group(1).replace(',', ''))
+        if bb_middle_match:
+            latest_data['bb_middle'] = float(bb_middle_match.group(1).replace(',', ''))
+        if bb_lower_match:
+            latest_data['bb_lower'] = float(bb_lower_match.group(1).replace(',', ''))
         if macd_match:
             latest_data['macd'] = float(macd_match.group(1))
         if macd_signal_match:
             latest_data['macd_signal'] = float(macd_signal_match.group(1))
+        if volume_sma20_match:
+            latest_data['volume_sma_20'] = float(volume_sma20_match.group(1).replace(',', ''))
+        if atr_volatility_ratio_match:
+            latest_data['atr_volatility_ratio'] = float(atr_volatility_ratio_match.group(1))
         return latest_data
     except Exception as e:
-        print(f"[ERROR] Failed to parse markdown data: {e}")
+        print(f"[ERROR] Failed to parse markdown content: {e}")
         return {}
+
+
+
 
 def extract_json_from_response(response_text):
     """Extract JSON object from LLM response text."""
@@ -106,8 +161,41 @@ def initialize_groq_client():
         raise Exception("Groq API key missing in .env")
     return Groq(api_key=api_key)
 
+# def build_llm_context(portfolio, active_trades, latest_data, config, last_10_trades):
+#     """Bundle all relevant strategy triggers, market info, and last 10 trades for LLM context."""
+#     sma_20 = latest_data.get('sma_20', 0)
+#     current_price = latest_data.get('current_price', 0)
+#     last_price = sma_20 if sma_20 else current_price
+#     dca_percentage = config.get('dca_percentage', 3.0)
+#     price_drop = ((last_price - current_price) / last_price) * 100 if last_price else 0
+#     dca_triggered = price_drop >= dca_percentage
+
+#     atr_value = latest_data.get('atr_14', 0)
+#     atr_multiplier = config.get('atr_multiplier', 1.5)
+#     stop_loss_triggers = []
+#     for trade in active_trades:
+#         stop_loss = trade['entry_price'] - (atr_value * atr_multiplier)
+#         if current_price <= stop_loss:
+#             stop_loss_triggers.append({
+#                 'entry_price': trade['entry_price'],
+#                 'stop_loss': stop_loss,
+#                 'current_price': current_price
+#             })
+
+#     context = {
+#         'portfolio': portfolio,
+#         'active_trades': active_trades,
+#         'market_data': latest_data,
+#         'dca_triggered': dca_triggered,
+#         'dca_price_drop_pct': price_drop,
+#         'stop_loss_triggers': stop_loss_triggers,
+#         'config': config,
+#         'recent_trade_history': last_10_trades
+#     }
+#     return context
+# ---------------------- v2 for more indicators -------------------------------------
 def build_llm_context(portfolio, active_trades, latest_data, config, last_10_trades):
-    """Bundle all relevant strategy triggers, market info, and last 10 trades for LLM context."""
+    """Bundle all relevant strategy triggers, market info, and last 10 trades for LLM context, including new indicators."""
     sma_20 = latest_data.get('sma_20', 0)
     current_price = latest_data.get('current_price', 0)
     last_price = sma_20 if sma_20 else current_price
@@ -130,7 +218,7 @@ def build_llm_context(portfolio, active_trades, latest_data, config, last_10_tra
     context = {
         'portfolio': portfolio,
         'active_trades': active_trades,
-        'market_data': latest_data,
+        'market_data': latest_data,  # Now includes new indicators like EMA, Bollinger, Volume SMA, ATR Ratio
         'dca_triggered': dca_triggered,
         'dca_price_drop_pct': price_drop,
         'stop_loss_triggers': stop_loss_triggers,
@@ -138,6 +226,7 @@ def build_llm_context(portfolio, active_trades, latest_data, config, last_10_tra
         'recent_trade_history': last_10_trades
     }
     return context
+
 
 # def get_llm_decision(context):
 #     """
@@ -222,11 +311,95 @@ def track_time(func):
 
     return wrapper
 
+# @track_time
+# def get_llm_decision(context):
+#     """
+#     Query Groq LLM for trading decision using full context, including new indicators.
+#     Returns dict: {action, amount (for BUY), quantity (for SELL), confidence, rationale}
+#     """
+#     try:
+#         client = initialize_groq_client()
+#         # Compose prompt for LLM, updated with new indicators
+#         system_prompt = f"""
+# You are an expert Bitcoin trading algorithm designed to maximize profits on hourly timeframes. Analyze the provided market data and suggest the most profitable action (BUY, SELL, or HOLD) with a confidence score (0-100).
+
+# YOUR PRIMARY OBJECTIVE: Generate maximum profit on EACH trade by identifying high-probability setups with clear entry/exit points, focusing on DCA (Dollar-Cost Averaging) and ATR (Average True Range) indicators.
+
+# TRADING RULES:
+# 1. ONLY BUY when there are strong signals of an imminent upward price movement (2%+ potential within hours), especially on DCA triggers with high volume.
+# 2. ONLY SELL when:
+#    - You've captured at least 1.5% profit, OR
+#    - Clear reversal signals indicate the uptrend is ending, OR
+#    - ATR-based stop-loss or volatility ratio indicates risk.
+# 3. DEFAULT to HOLD unless a high-confidence (70%+) opportunity exists.
+# 4. AVOID frequent trading - quality over quantity is essential.
+
+# TECHNICAL INDICATORS - BUY WHEN:
+# - RSI crosses above 30 from oversold territory.
+# - Price bounces off Bollinger Lower band with increasing volume (DCA confirmation).
+# - EMA 12 crosses above EMA 26 (bullish trend).
+# - MACD shows bullish crossover or divergence.
+# - Price is testing key support with decreasing selling pressure and high Volume SMA 20.
+
+# TECHNICAL INDICATORS - SELL WHEN:
+# - RSI reaches overbought territory (70+).
+# - Price hits Bollinger Upper band with declining momentum.
+# - EMA 12 crosses below EMA 26 (bearish trend).
+# - MACD shows bearish crossover or divergence.
+# - ATR Volatility Ratio is high, indicating potential reversal or stop-loss trigger.
+# - Price action shows reversal patterns at resistance.
+
+# PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels (using ATR), and the specific technical signals that triggered your decision.
+
+# For BUY: Specify the USD amount to invest (e.g., based on position size, available funds, portfolio, recent trades, indicators).
+# For SELL: Specify the BTC quantity to sell (e.g., full position, partial based on risk, portfolio, recent trades, indicators).
+
+# CONTEXT:
+# {json.dumps(context, indent=2)}
+
+# Respond ONLY with valid JSON (no markdown, no explanation, no code block markers):
+
+# {{
+#     "action": "BUY|SELL|HOLD",
+#     "amount": <USD amount for BUY, omit for others>,
+#     "quantity": <BTC quantity for SELL, omit for others>,
+#     "confidence": <0-100>,
+#     "rationale": "<brief explanation>"
+# }}
+# """
+#         response = client.chat.completions.create(
+#             model="meta-llama/llama-4-maverick-17b-128e-instruct",
+#             messages=[
+#                 {"role": "system", "content": system_prompt}
+#             ],
+#         )
+#         response_text = response.choices[0].message.content.strip()
+#         decision = extract_json_from_response(response_text)
+#         if decision:
+#             # Return full decision including amount/quantity if present
+#             return {
+#                 "action": decision.get("action"),
+#                 "amount": decision.get("amount"),  # For BUY
+#                 "quantity": decision.get("quantity"),  # For SELL
+#                 "confidence": decision.get("confidence", 0),
+#                 "rationale": decision.get("rationale", "")
+#             }
+#         else:
+#             return {
+#                 "action": "HOLD",
+#                 "rationale": "LLM response parsing failed, defaulting to HOLD."
+#             }
+#     except Exception as e:
+#         return {
+#             "action": "HOLD",
+#             "rationale": "LLM decision failed, defaulting to HOLD."
+        # }
+# ----------------------- Now gives quantity of buy sell as well ----------------------------------------
 @track_time
 def get_llm_decision(context):
     """
     Query Groq LLM for trading decision using full context.
-    Returns dict: {action, rationale}
+    Returns dict: {action, amount (for BUY), quantity (for SELL), confidence, rationale}
     """
     try:
         client = initialize_groq_client()
@@ -259,6 +432,9 @@ TECHNICAL INDICATORS - SELL WHEN:
 
 PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision.
 
+For BUY: Specify the USD amount to invest (e.g., based on position size, available funds, portfolio, recent trades, indicators).
+For SELL: Specify the BTC quantity to sell (e.g., full position, partial based on risk, portfolio, recent trades, indicators).
+
 CONTEXT:
 {json.dumps(context, indent=2)}
 
@@ -266,6 +442,8 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
 
 {{
     "action": "BUY|SELL|HOLD",
+    "amount": <BTC amount for BUY, omit for others>,
+    "quantity": <BTC quantity for SELL, omit for others>,
     "confidence": <0-100>,
     "rationale": "<brief explanation>"
 }}
@@ -279,10 +457,13 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
         response_text = response.choices[0].message.content.strip()
         decision = extract_json_from_response(response_text)
         if decision:
-            # Only return action and rationale
+            # Return full decision including amount/quantity if present
             return {
                 "action": decision.get("action"),
-                "rationale": decision.get("rationale")
+                "amount": decision.get("amount"),  # For BUY
+                "quantity": decision.get("quantity"),  # For SELL
+                "confidence": decision.get("confidence", 0),
+                "rationale": decision.get("rationale", "")
             }
         else:
             return {
@@ -295,63 +476,262 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
             "rationale": "LLM decision failed, defaulting to HOLD."
         }
 
+    # def manage_trades(portfolio, active_trades, last_10_trades):
+    #     """
+    #     Main strategy manager function.
+    #     - Loads config and latest market data
+    #     - Accepts last 10 trades externally
+    #     - Builds LLM context with all triggers and trade history
+    #     - Calls LLM for final decision
+    #     - Returns a single decision and updated active trades
+    #     """
+    #     config = load_config()
+    #     latest_data = parse_latest_data_from_md()
+    #     context = build_llm_context(portfolio, active_trades, latest_data, config, last_10_trades)
+    #     llm_decision = get_llm_decision(context)
 
-def manage_trades(portfolio, active_trades, last_10_trades):
+    #     current_price = latest_data.get('current_price', 0)
+    #     position_size_pct = config.get('position_size_pct', 2.0)
+    #     budget = config.get('budget', 10000)
+
+    #     # Only execute LLM's decision
+    #     if llm_decision['action'] == 'BUY' and portfolio['usdt'] >= (budget * position_size_pct / 100):
+    #         amount = budget * position_size_pct / 100
+    #         decision = {
+    #             'action': 'BUY',
+    #             'amount': min(amount, portfolio['usdt']),
+    #             'rationale': llm_decision.get('rationale', ''),
+    #             'confidence': llm_decision.get('confidence', 0)
+    #         }
+    #         active_trades.append({
+    #             'entry_price': current_price,
+    #             'quantity': min(amount, portfolio['usdt']) / current_price,
+    #             'atr': latest_data.get('atr_14', 0)
+    #         })
+    #     elif llm_decision['action'] == 'SELL' and portfolio['btc'] > 0:
+    #         decision = {
+    #             'action': 'SELL',
+    #             'quantity': portfolio['btc'],
+    #             'rationale': llm_decision.get('rationale', ''),
+    #             'confidence': llm_decision.get('confidence', 0)
+    #         }
+    #         active_trades.clear()
+    #     else:
+    #         decision = {
+    #             'action': 'HOLD',
+    #             'rationale': llm_decision.get('rationale', ''),
+    #             'confidence': llm_decision.get('confidence', 0)
+    #         }
+
+    #     # Portfolio safeguard: stop trading if drawdown too big
+    #     max_drawdown = config.get('max_drawdown', 25)
+    #     portfolio_value = portfolio['btc'] * current_price + portfolio['usdt']
+    #     if portfolio_value < budget * (1 - max_drawdown / 100):
+    #         print(f"[SAFEGUARD] Portfolio value ${portfolio_value:,.2f} < {100 - max_drawdown}% of budget ${budget:,.2f}. Pausing trades.")
+    #         return None, active_trades
+
+    #     return decision, active_trades
+
+
+# ------------------- Manage Trades v2 , extenally provided inputs ---------------------------------------------------
+
+# config = load_config()
+# latest_data = parse_latest_data_from_md()
+# context = build_llm_context(portfolio, active_trades, latest_data, config, last_10_trades)
+
+# def manage_trades(portfolio, active_trades, last_10_trades, config, latest_data, context):
+#     llm_decision = get_llm_decision(context)
+#     current_price = latest_data.get('current_price', 0)
+#     position_size_pct = config.get('position_size_pct', 2.0)
+#     budget = config.get('budget', 10000)
+
+#     # Only execute LLM's decision
+#     if llm_decision['action'] == 'BUY' and portfolio['usdt'] >= (budget * position_size_pct / 100):
+#         amount = budget * position_size_pct / 100
+#         decision = {
+#             'action': 'BUY',
+#             'amount': min(amount, portfolio['usdt']),
+#             'rationale': llm_decision.get('rationale', ''),
+#             'confidence': llm_decision.get('confidence', 0)
+#         }
+#         active_trades.append({
+#             'entry_price': current_price,
+#             'quantity': min(amount, portfolio['usdt']) / current_price,
+#             'atr': latest_data.get('atr_14', 0)
+#         })
+#     elif llm_decision['action'] == 'SELL' and portfolio['btc'] > 0:
+#         decision = {
+#             'action': 'SELL',
+#             'quantity': portfolio['btc'],
+#             'rationale': llm_decision.get('rationale', ''),
+#             'confidence': llm_decision.get('confidence', 0)
+#         }
+#         active_trades.clear()
+#     else:
+#         decision = {
+#             'action': 'HOLD',
+#             'rationale': llm_decision.get('rationale', ''),
+#             'confidence': llm_decision.get('confidence', 0)
+#         }
+
+#     # Portfolio safeguard: stop trading if drawdown too big
+#     max_drawdown = config.get('max_drawdown', 25)
+#     portfolio_value = portfolio['btc'] * current_price + portfolio['usdt']
+#     if portfolio_value < budget * (1 - max_drawdown / 100):
+#         print(f"[SAFEGUARD] Portfolio value ${portfolio_value:,.2f} < {100 - max_drawdown}% of budget ${budget:,.2f}. Pausing trades.")
+#         return None, active_trades
+
+#     return decision, active_trades
+
+
+# ----------------- manage_trades func v3 with md_content markdown support rather than getting latest_data separately as a string -------------------
+# def manage_trades(portfolio, active_trades, last_10_trades, config, context ,md_content):
+#     """
+#     Updated: Pass md_content instead of latest_data.
+#     """
+#     latest_data = parse_latest_data_from_md_content(md_content)
+#     sma_20 = latest_data.get('sma_20', 0)
+#     current_price = latest_data.get('current_price', 0)
+#     last_price = sma_20 if sma_20 else current_price
+#     dca_percentage = config.get('dca_percentage', 3.0)
+#     price_drop = ((last_price - current_price) / last_price) * 100 if last_price else 0
+#     dca_triggered = price_drop >= dca_percentage
+
+#     atr_value = latest_data.get('atr_14', 0)
+#     atr_multiplier = config.get('atr_multiplier', 1.5)
+#     stop_loss_triggers = []
+#     for trade in active_trades:
+#         stop_loss = trade['entry_price'] - (atr_value * atr_multiplier)
+#         if current_price <= stop_loss:
+#             stop_loss_triggers.append({
+#                 'entry_price': trade['entry_price'],
+#                 'stop_loss': stop_loss,
+#                 'current_price': current_price
+#             })
+
+#     # Example LLM decision logic (replace with your LLM call)
+#     position_size_pct = config.get('position_size_pct', 2.0)
+#     budget = config.get('budget', 10000)
+#     decision = get_llm_decision(context)
+
+#     # Example buy/sell logic (replace with your own)
+#     if dca_triggered and portfolio['usdt'] >= (budget * position_size_pct / 100):
+#         amount = budget * position_size_pct / 100
+#         decision = {
+#             'action': 'BUY',
+#             'amount': min(amount, portfolio['usdt']),
+#             'rationale': 'DCA triggered.',
+#             'confidence': 80
+#         }
+#         active_trades.append({
+#             'entry_price': current_price,
+#             'quantity': min(amount, portfolio['usdt']) / current_price,
+#             'atr': atr_value
+#         })
+#     elif stop_loss_triggers and portfolio['btc'] > 0:
+#         decision = {
+#             'action': 'SELL',
+#             'quantity': portfolio['btc'],
+#             'rationale': 'Stop-loss triggered.',
+#             'confidence': 90
+#         }
+#         active_trades.clear()
+
+#     # Portfolio safeguard: stop trading if drawdown too big
+#     max_drawdown = config.get('max_drawdown', 25)
+#     portfolio_value = portfolio['btc'] * current_price + portfolio['usdt']
+#     if portfolio_value < budget * (1 - max_drawdown / 100):
+#         print(f"[SAFEGUARD] Portfolio value ${portfolio_value:,.2f} < {100 - max_drawdown}% of budget ${budget:,.2f}. Pausing trades.")
+#         return None, active_trades
+
+#     return decision, active_trades
+
+# --------------------- Updated manage_trades now all decisions are made by llm as all indicators will be calculatd externally and passed into the llm as md_content as context / latest_data
+def manage_trades(portfolio, active_trades, last_10_trades, config, context, latest_data=None):
     """
-    Main strategy manager function.
-    - Loads config and latest market data
-    - Accepts last 10 trades externally
-    - Builds LLM context with all triggers and trade history
-    - Calls LLM for final decision
-    - Returns a single decision and updated active trades
+    Updated: Strictly LLM-driven decisions only.
+    Executes BUY, SELL, or HOLD based on LLM output.
+    Returns the updated portfolio, decision, and active trades.
     """
-    config = load_config()
-    latest_data = parse_latest_data_from_md()
-    context = build_llm_context(portfolio, active_trades, latest_data, config, last_10_trades)
-    llm_decision = get_llm_decision(context)
+    # Parse latest_data if provided as a string (md_content)
+    if latest_data is None or isinstance(latest_data, str):
+        if isinstance(latest_data, str):
+            latest_data = parse_latest_data_from_md_content(latest_data)
+        elif isinstance(context, dict) and 'md_content' in context:
+            latest_data = parse_latest_data_from_md_content(context['md_content'])
+        else:
+            latest_data = parse_latest_data_from_md()
 
     current_price = latest_data.get('current_price', 0)
-    position_size_pct = config.get('position_size_pct', 2.0)
-    budget = config.get('budget', 10000)
 
-    # Only execute LLM's decision
-    if llm_decision['action'] == 'BUY' and portfolio['usdt'] >= (budget * position_size_pct / 100):
-        amount = budget * position_size_pct / 100
+    # Get LLM decision
+    llm_decision = get_llm_decision(context)
+    if llm_decision and llm_decision.get('action') in ['BUY', 'SELL', 'HOLD']:
         decision = {
-            'action': 'BUY',
-            'amount': min(amount, portfolio['usdt']),
+            'action': llm_decision.get('action'),
             'rationale': llm_decision.get('rationale', ''),
             'confidence': llm_decision.get('confidence', 0)
         }
-        active_trades.append({
-            'entry_price': current_price,
-            'quantity': min(amount, portfolio['usdt']) / current_price,
-            'atr': latest_data.get('atr_14', 0)
-        })
-    elif llm_decision['action'] == 'SELL' and portfolio['btc'] > 0:
-        decision = {
-            'action': 'SELL',
-            'quantity': portfolio['btc'],
-            'rationale': llm_decision.get('rationale', ''),
-            'confidence': llm_decision.get('confidence', 0)
-        }
-        active_trades.clear()
+
+        # Handle BUY action
+        if decision['action'] == 'BUY':
+            if 'amount' in llm_decision:
+                btc_quantity = llm_decision['amount']
+                usd_amount = btc_quantity * current_price
+                decision['amount'] = min(usd_amount, portfolio['usdt'])
+                decision['quantity'] = decision['amount'] / current_price if current_price else 0
+
+                # Update portfolio and active trades
+                portfolio['usdt'] -= decision['amount']
+                portfolio['btc'] += decision['quantity']
+                active_trades.append({
+                    'entry_price': current_price,
+                    'quantity': decision['quantity'],
+                    'atr': latest_data.get('atr_14', 0)
+                })
+            else:
+                decision['action'] = 'HOLD'
+                decision['rationale'] = 'LLM did not specify amount for BUY.'
+
+        # Handle SELL action
+        elif decision['action'] == 'SELL':
+            if 'quantity' in llm_decision:
+                btc_quantity = llm_decision['quantity']
+                decision['quantity'] = min(btc_quantity, portfolio['btc'])
+
+                # Update portfolio and active trades
+                portfolio['btc'] -= decision['quantity']
+                portfolio['usdt'] += decision['quantity'] * current_price
+
+                # Remove sold quantity from active trades
+                sold_quantity = decision['quantity']
+                for trade in active_trades[:]:
+                    if sold_quantity >= trade['quantity']:
+                        sold_quantity -= trade['quantity']
+                        active_trades.remove(trade)
+                    else:
+                        trade['quantity'] -= sold_quantity
+                        sold_quantity = 0
+                        break
+            else:
+                decision['action'] = 'HOLD'
+                decision['rationale'] = 'LLM did not specify quantity for SELL.'
+
     else:
         decision = {
             'action': 'HOLD',
-            'rationale': llm_decision.get('rationale', ''),
-            'confidence': llm_decision.get('confidence', 0)
+            'rationale': 'LLM failed or invalid response.',
+            'confidence': 50
         }
 
     # Portfolio safeguard: stop trading if drawdown too big
     max_drawdown = config.get('max_drawdown', 25)
     portfolio_value = portfolio['btc'] * current_price + portfolio['usdt']
-    if portfolio_value < budget * (1 - max_drawdown / 100):
-        print(f"[SAFEGUARD] Portfolio value ${portfolio_value:,.2f} < {100 - max_drawdown}% of budget ${budget:,.2f}. Pausing trades.")
-        return None, active_trades
+    if portfolio_value < config.get('budget', 10000) * (1 - max_drawdown / 100):
+        print(f"[SAFEGUARD] Portfolio value ${portfolio_value:,.2f} < {100 - max_drawdown}% of budget ${config.get('budget', 10000):,.2f}. Pausing trades.")
+        return portfolio, None, active_trades
 
-    return decision, active_trades
-
+    return portfolio, decision, active_trades
 # ------------------- TEST CODE -------------------
 if __name__ == "__main__":
     # Example test portfolio and trades
