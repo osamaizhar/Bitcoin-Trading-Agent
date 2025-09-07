@@ -1806,11 +1806,56 @@ import os
 import sys
 import asyncio
 import pandas as pd
-import matplotlib.pyplot as plt
 from datetime import datetime, timedelta
 import ta
 import json
-from llm_decision_strategy_05 import manage_trades, get_llm_decision
+from llm_decision_strategy_05 import get_llm_decision
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+
+def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
+    df = pd.read_csv(trade_log_path)
+    df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+    plt.style.use('dark_background')
+
+    fig, axs = plt.subplots(4, 1, figsize=(16, 16), sharex=True)
+
+    # USD Balance
+    axs[0].plot(df['Timestamp'], df['USD BALANCE'], color='lime', label='USD Balance')
+    axs[0].set_ylabel('USD Balance')
+    axs[0].set_title('USD Balance Over Time')
+    axs[0].legend(loc='upper right')
+    axs[0].grid(True, alpha=0.3)
+
+    # Total Portfolio Value
+    axs[1].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
+    axs[1].set_ylabel('Portfolio Value (USD)')
+    axs[1].set_title('Total Portfolio Value Over Time')
+    axs[1].legend(loc='upper right')
+    axs[1].grid(True, alpha=0.3)
+
+    # BTC Value (USD)
+    axs[2].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
+    axs[2].set_ylabel('BTC Value (USD)')
+    axs[2].set_title('BTC Value (USD) Over Time')
+    axs[2].legend(loc='upper right')
+    axs[2].grid(True, alpha=0.3)
+
+    # BTC Price
+    axs[3].plot(df['Timestamp'], df['Price BTC'], color='white', label='BTC Price')
+    axs[3].set_ylabel('BTC Price')
+    axs[3].set_title('BTC Price Over Time')
+    axs[3].legend(loc='upper right')
+    axs[3].grid(True, alpha=0.3)
+    axs[3].set_xlabel('Timestamp')
+
+    # Format x-axis for hourly ticks
+    axs[3].xaxis.set_major_locator(mdates.HourLocator(interval=6))
+    axs[3].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+    plt.xticks(rotation=45)
+
+    plt.tight_layout()
+    plt.show()
 
 # ---- EDIT THESE SETTINGS TO CHANGE INTERVAL AND DURATION ----
 TRADE_INTERVAL_HOURS = 1      # Set to 1 for hourly, 24 for daily, etc.
@@ -1861,19 +1906,19 @@ def generate_md_report(current_date, row, indicators, portfolio, current_price):
 
 ### Technical Indicators (Current Values)
 
-- **ATR (14)**: ${indicators['atr_14']:,.2f}
-- **RSI (14)**: {indicators['rsi_14']:.2f}
-- **SMA 20**: ${indicators['sma_20']:,.2f}
-- **SMA 50**: ${indicators['sma_50']:,.2f}
-- **EMA 12**: ${indicators['ema_12']:,.2f}
-- **EMA 26**: ${indicators['ema_26']:,.2f}
-- **Bollinger Upper (20)**: ${indicators['bb_upper']:,.2f}
-- **Bollinger Middle (20)**: ${indicators['bb_middle']:,.2f}
-- **Bollinger Lower (20)**: ${indicators['bb_lower']:,.2f}
-- **MACD**: {indicators['macd']:.2f}
-- **MACD Signal**: {indicators['macd_signal']:.2f}
-- **Volume SMA 20**: {indicators['volume_sma_20']:,.0f}
-- **ATR Volatility Ratio**: {indicators['atr_volatility_ratio']:.4f}
+- **ATR (14)**: ${indicators['atr_14'] if indicators['atr_14'] is not None else 'N/A'}
+- **RSI (14)**: {indicators['rsi_14'] if indicators['rsi_14'] is not None else 'N/A'}
+- **SMA 20**: ${indicators['sma_20'] if indicators['sma_20'] is not None else 'N/A'}
+- **SMA 50**: ${indicators['sma_50'] if indicators['sma_50'] is not None else 'N/A'}
+- **EMA 12**: ${indicators['ema_12'] if indicators['ema_12'] is not None else 'N/A'}
+- **EMA 26**: ${indicators['ema_26'] if indicators['ema_26'] is not None else 'N/A'}
+- **Bollinger Upper (20)**: ${indicators['bb_upper'] if indicators['bb_upper'] is not None else 'N/A'}
+- **Bollinger Middle (20)**: ${indicators['bb_middle'] if indicators['bb_middle'] is not None else 'N/A'}
+- **Bollinger Lower (20)**: ${indicators['bb_lower'] if indicators['bb_lower'] is not None else 'N/A'}
+- **MACD**: {indicators['macd'] if indicators['macd'] is not None else 'N/A'}
+- **MACD Signal**: {indicators['macd_signal'] if indicators['macd_signal'] is not None else 'N/A'}
+- **Volume SMA 20**: {indicators['volume_sma_20'] if indicators['volume_sma_20'] is not None else 'N/A'}
+- **ATR Volatility Ratio**: {indicators['atr_volatility_ratio'] if indicators['atr_volatility_ratio'] is not None else 'N/A'}
 
 ## Portfolio Status
 
@@ -1882,9 +1927,6 @@ def generate_md_report(current_date, row, indicators, portfolio, current_price):
 - Portfolio Value: {portfolio['btc'] * current_price + portfolio['usdt']}
 """
     return md_content
-
-def log_trade(trade_record, trade_log):
-    trade_log.append(trade_record)
 
 async def run_backtest():
     data_file = 'btc_hourly_yahoo_binance_6mo.csv'
@@ -1909,36 +1951,13 @@ async def run_backtest():
     df['low'] = df['binance_low'].fillna(df['yahoo_low'])
     df['volume'] = df['binance_volume'].fillna(df['yahoo_volume'])
 
-    # Precompute indicators (outside loop)
-    df['atr_14'] = ta.volatility.AverageTrueRange(df['high'], df['low'], df['close'], window=14).average_true_range()
-    df['rsi_14'] = ta.momentum.RSIIndicator(df['close'], window=14).rsi()
-    df['sma_20'] = ta.trend.sma_indicator(df['close'], window=20)
-    df['sma_50'] = ta.trend.sma_indicator(df['close'], window=50)
-    df['ema_12'] = ta.trend.ema_indicator(df['close'], window=12)
-    df['ema_26'] = ta.trend.ema_indicator(df['close'], window=26)
-    bb_indicator = ta.volatility.BollingerBands(df['close'], window=20, window_dev=2)
-    df['bb_upper'] = bb_indicator.bollinger_hband()
-    df['bb_middle'] = bb_indicator.bollinger_mavg()
-    df['bb_lower'] = bb_indicator.bollinger_lband()
-    macd_indicator = ta.trend.MACD(df['close'])
-    df['macd'] = macd_indicator.macd()
-    df['macd_signal'] = macd_indicator.macd_signal()
-    df['volume_sma_20'] = ta.trend.sma_indicator(df['volume'], window=20)
-    df['atr_volatility_ratio'] = df['atr_14'] / df['close']  # Normalized ATR for volatility
-
     config = load_config()
     budget = config.get('budget', 10000)
     portfolio = {'btc': 0.0, 'usdt': budget}
-    active_trades = []
     trade_log = []
     trade_log_path = "backtest_trade_log.csv"
     if os.path.exists(trade_log_path):
         os.remove(trade_log_path)
-    portfolio_history = []
-    daily_pnl_log = []
-
-    prev_day = None
-    prev_day_value = None
 
     subsample = TRADE_INTERVAL_HOURS
     end_date = df['date'].max()
@@ -1955,124 +1974,112 @@ async def run_backtest():
     df_subsampled = df_test.iloc[::subsample, :].reset_index(drop=True)
     print(f"[INFO] Running backtest on {len(df_subsampled)} data points (interval: {subsample}h, period: {TRADE_DURATION})")
 
-    decision_counts = {"BUY": 0, "SELL": 0, "HOLD": 0}
     for i, row in df_subsampled.iterrows():
         if pd.isna(row['close']):
             continue
         current_date = row['date']
         current_price = row['close']
-        indicators = {
-            'atr_14': row['atr_14'],
-            'rsi_14': row['rsi_14'],
-            'sma_20': row['sma_20'],
-            'sma_50': row['sma_50'],
-            'ema_12': row['ema_12'],
-            'ema_26': row['ema_26'],
-            'bb_upper': row['bb_upper'],
-            'bb_middle': row['bb_middle'],
-            'bb_lower': row['bb_lower'],
-            'macd': row['macd'],
-            'macd_signal': row['macd_signal'],
-            'volume_sma_20': row['volume_sma_20'],
-            'atr_volatility_ratio': row['atr_volatility_ratio']
-        }
+
+        # --- Recalculate indicators using data up to current row ---
+        df_slice = df_test[df_test['date'] <= current_date].copy()
+        min_window = 14  # Largest window used for indicators
+        if len(df_slice) < min_window:
+            indicators = {
+                'atr_14': None,
+                'rsi_14': None,
+                'sma_20': None,
+                'sma_50': None,
+                'ema_12': None,
+                'ema_26': None,
+                'bb_upper': None,
+                'bb_middle': None,
+                'bb_lower': None,
+                'macd': None,
+                'macd_signal': None,
+                'volume_sma_20': None,
+                'atr_volatility_ratio': None
+            }
+        else:
+            indicators = {
+                'atr_14': ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1],
+                'rsi_14': ta.momentum.RSIIndicator(df_slice['close'], window=14).rsi().iloc[-1],
+                'sma_20': ta.trend.sma_indicator(df_slice['close'], window=20).iloc[-1],
+                'sma_50': ta.trend.sma_indicator(df_slice['close'], window=50).iloc[-1],
+                'ema_12': ta.trend.ema_indicator(df_slice['close'], window=12).iloc[-1],
+                'ema_26': ta.trend.ema_indicator(df_slice['close'], window=26).iloc[-1],
+                'bb_upper': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_hband().iloc[-1],
+                'bb_middle': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_mavg().iloc[-1],
+                'bb_lower': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_lband().iloc[-1],
+                'macd': ta.trend.MACD(df_slice['close']).macd().iloc[-1],
+                'macd_signal': ta.trend.MACD(df_slice['close']).macd_signal().iloc[-1],
+                'volume_sma_20': ta.trend.sma_indicator(df_slice['volume'], window=20).iloc[-1],
+                'atr_volatility_ratio': (ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1] / df_slice['close'].iloc[-1])
+            }
+
         md_content = generate_md_report(current_date, row, indicators, portfolio, current_price)
-        last_10_trades = trade_log[-10:]
         context = {
             'md_content': md_content,
             'portfolio': portfolio,
-            'trade_history': last_10_trades
+            'trade_history': trade_log[-10:]
         }
-        portfolio, decision, active_trades = manage_trades(portfolio, active_trades, last_10_trades, config, context, latest_data=md_content)
-        print(f"Trade {i+1}: Decision = {decision['action']}")
-        if decision['action'] in decision_counts:
-            decision_counts[decision['action']] += 1
+        decision = get_llm_decision(context)
+        print(f"LLM Decision : {decision}")
+        action = decision.get('action', 'None')
+        quantity = decision.get('quantity', 0)
 
-        # Log trade decisions
+        # --- Portfolio management ---
+        value_usd_cost = 0
+        reason = None
+
+        if action == 'BUY':
+            value_usd_cost = quantity * current_price
+            if quantity <= 0:
+                reason = "LLM suggested BUY with zero or negative quantity"
+            elif portfolio['usdt'] < value_usd_cost:
+                reason = f"Insufficient USD balance for BUY (needed ${value_usd_cost:.2f}, available ${portfolio['usdt']:.2f})"
+            else:
+                portfolio['usdt'] -= value_usd_cost
+                portfolio['btc'] += quantity
+
+        elif action == 'SELL':
+            value_usd_cost = quantity * current_price
+            if quantity <= 0:
+                reason = "LLM suggested SELL with zero or negative quantity"
+            elif portfolio['btc'] < quantity:
+                reason = f"Insufficient BTC balance for SELL (needed {quantity:.6f}, available {portfolio['btc']:.6f})"
+            else:
+                portfolio['btc'] -= quantity
+                portfolio['usdt'] += value_usd_cost
+
+        else:
+            quantity = 0
+            value_usd_cost = 0
+
+        if reason:
+            action = f"Overwrite LLM Decision to HOLD: {reason}"
+            quantity = 0
+            value_usd_cost = 0
+
+        btc_value_usd = portfolio['btc'] * current_price
+        total_portfolio_value = btc_value_usd + portfolio['usdt']
+
         trade_record = {
             'Timestamp': current_date.strftime('%Y-%m-%d %H:%M:%S'),
-            'Type': decision['action'],
+            'Type': action,
             'Price BTC': current_price,
-            'Quantity': decision.get('quantity', 0),
-            'Value USD (Cost)': decision.get('amount', 0),
+            'Quantity': quantity,
+            'Value USD (Cost)': value_usd_cost,
             'BTC BALANCE': portfolio['btc'],
-            'BTC VALUE USD': portfolio['btc'] * current_price,
-            'Total Portfolio Value': portfolio['btc'] * current_price + portfolio['usdt'],
+            'BTC VALUE USD': btc_value_usd,
+            'Total Portfolio Value': total_portfolio_value,
             'USD BALANCE': portfolio['usdt'],
-            'PROFIT / LOSS USD': ''
         }
-        log_trade(trade_record, trade_log)
-
-        # Write to CSV every 10 trades
-        if len(trade_log) % 10 == 0 and len(trade_log) > 0:
-            pd.DataFrame(trade_log).to_csv(trade_log_path, index=False)
-
-        portfolio_value = portfolio['btc'] * current_price + portfolio['usdt']
-        portfolio_history.append({'date': current_date, 'value': portfolio_value})
-
-        day = current_date.date()
-        if prev_day is None:
-            prev_day = day
-            prev_day_value = portfolio_value
-        if day != prev_day:
-            daily_pnl = portfolio_value - prev_day_value
-            daily_pnl_log.append({'date': prev_day, 'daily_pnl': daily_pnl, 'portfolio_value': prev_day_value})
-            prev_day = day
-            prev_day_value = portfolio_value
-
-    if prev_day is not None:
-        daily_pnl = portfolio_value - prev_day_value
-        daily_pnl_log.append({'date': prev_day, 'daily_pnl': daily_pnl, 'portfolio_value': portfolio_value})
-
-    for trade in trade_log:
-        trade_day = datetime.strptime(trade['Timestamp'], '%Y-%m-%d %H:%M:%S').date()
-        trade['PROFIT / LOSS USD'] = next((d['daily_pnl'] for d in daily_pnl_log if d['date'] == trade_day), None)
-
-    # Write any remaining trades at the end
-    if len(trade_log) % 10 != 0:
+        trade_log.append(trade_record)
         pd.DataFrame(trade_log).to_csv(trade_log_path, index=False)
-    daily_pnl_df = pd.DataFrame(daily_pnl_log)
-    portfolio_df = pd.DataFrame(portfolio_history)
-
-    print("\nDecision Counts:")
-    for k, v in decision_counts.items():
-        print(f"{k}: {v}")
-
-    if len(portfolio_df) > 0:
-        initial_value = portfolio_df['value'].iloc[0]
-        final_value = portfolio_df['value'].iloc[-1]
-        total_return = (final_value - initial_value) / initial_value * 100
-        num_trades = len(trade_log)
-
-        print("\n[BACKTEST SUMMARY]")
-        print(f"Initial Value: ${initial_value:,.2f}")
-        print(f"Final Value: ${final_value:,.2f}")
-        print(f"Total Return: {total_return:.2f}%")
-        print(f"Number of Trades: {num_trades}")
-        print(f"Max Portfolio Value: ${portfolio_df['value'].max():,.2f}")
-        print(f"Min Portfolio Value: ${portfolio_df['value'].min():,.2f}")
-
-        plt.figure(figsize=(14, 6))
-        plt.subplot(2, 1, 1)
-        plt.plot(portfolio_df['date'], portfolio_df['value'], label='Portfolio Value')
-        plt.title('Portfolio Value Over Time')
-        plt.ylabel('Value (USD)')
-        plt.legend()
-
-        if len(daily_pnl_df) > 0:
-            plt.subplot(2, 1, 2)
-            plt.bar(daily_pnl_df['date'], daily_pnl_df['daily_pnl'], label='Daily P&L')
-            plt.title('Daily Profit/Loss')
-            plt.ylabel('Daily P&L (USD)')
-            plt.xlabel('Date')
-            plt.legend()
-
-        plt.tight_layout()
-        plt.show()
-    else:
-        print("[ERROR] No portfolio data generated during backtest!")
 
 if __name__ == "__main__":
     print("Running in backtest mode...")
-    asyncio.run(run_backtest())
+    #asyncio.run(run_backtest())
     print("Backtest completed.")
+    # Call this after your backtest
+    plot_trade_log()
