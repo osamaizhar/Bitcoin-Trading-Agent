@@ -1829,18 +1829,18 @@ def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
     axs[0].grid(True, alpha=0.3)
 
     # Total Portfolio Value
-    axs[1].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
-    axs[1].set_ylabel('Portfolio Value (USD)')
-    axs[1].set_title('Total Portfolio Value Over Time')
-    axs[1].legend(loc='upper right')
-    axs[1].grid(True, alpha=0.3)
-
-    # BTC Value (USD)
-    axs[2].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
-    axs[2].set_ylabel('BTC Value (USD)')
-    axs[2].set_title('BTC Value (USD) Over Time')
+    axs[2].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
+    axs[2].set_ylabel('Portfolio Value (USD)')
+    axs[2].set_title('Total Portfolio Value Over Time')
     axs[2].legend(loc='upper right')
     axs[2].grid(True, alpha=0.3)
+
+    # BTC Value (USD)
+    axs[1].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
+    axs[1].set_ylabel('BTC Value (USD)')
+    axs[1].set_title('BTC Value (USD) Over Time')
+    axs[1].legend(loc='upper right')
+    axs[1].grid(True, alpha=0.3)
 
     # BTC Price
     axs[3].plot(df['Timestamp'], df['Price BTC'], color='white', label='BTC Price')
@@ -1964,7 +1964,8 @@ async def run_backtest():
     start_date = df['date'].min()
     #end_date = df['date'].max()
     duration = parse_duration(TRADE_DURATION)
-    end_date = start_date + duration
+    #end_date = start_date + duration
+    end_date = df['date'].max()
     #start_date = end_date - duration
     print(f"[INFO] Trading period: {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -2024,9 +2025,9 @@ async def run_backtest():
             'portfolio': portfolio,
             'trade_history': trade_log[-10:]
         }
-        pprint(f"Context: {trade_log[-10:]}")
+        #pprint(f"Context: {trade_log[-10:]}")
         decision = get_llm_decision(context)
-        #print(f"LLM Decision : {decision}")
+        pprint(f"LLM Decision : {decision}")
         action = decision.get('action', 'None')
         quantity = decision.get('quantity', 0)
 
