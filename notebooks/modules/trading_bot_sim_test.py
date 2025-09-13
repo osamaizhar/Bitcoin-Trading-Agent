@@ -1802,6 +1802,907 @@
 
 # --------------------- Portfolio now being manage by manage trades function ------------------------------------
 
+# import os
+# import sys
+# import asyncio
+# import pandas as pd
+# from datetime import datetime, timedelta
+# import ta
+# import json
+# from llm_decision_strategy_05 import get_llm_decision
+# from pprint import pprint
+# import matplotlib.pyplot as plt
+# import matplotlib.dates as mdates
+
+# def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
+#     df = pd.read_csv(trade_log_path)
+#     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+#     plt.style.use('dark_background')
+
+#     fig, axs = plt.subplots(4, 1, figsize=(16, 16), sharex=True)
+
+#     # USD Balance
+#     axs[0].plot(df['Timestamp'], df['USD BALANCE'], color='lime', label='USD Balance')
+#     axs[0].set_ylabel('USD Balance')
+#     axs[0].set_title('USD Balance Over Time')
+#     axs[0].legend(loc='upper right')
+#     axs[0].grid(True, alpha=0.3)
+
+#     # Total Portfolio Value
+#     axs[2].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
+#     axs[2].set_ylabel('Portfolio Value (USD)')
+#     axs[2].set_title('Total Portfolio Value Over Time')
+#     axs[2].legend(loc='upper right')
+#     axs[2].grid(True, alpha=0.3)
+
+#     # BTC Value (USD)
+#     axs[1].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
+#     axs[1].set_ylabel('BTC Value (USD)')
+#     axs[1].set_title('BTC Value (USD) Over Time')
+#     axs[1].legend(loc='upper right')
+#     axs[1].grid(True, alpha=0.3)
+
+#     # BTC Price
+#     axs[3].plot(df['Timestamp'], df['Price BTC'], color='white', label='BTC Price')
+#     axs[3].set_ylabel('BTC Price')
+#     axs[3].set_title('BTC Price Over Time')
+#     axs[3].legend(loc='upper right')
+#     axs[3].grid(True, alpha=0.3)
+#     axs[3].set_xlabel('Timestamp')
+
+#     # Format x-axis for hourly ticks
+#     axs[3].xaxis.set_major_locator(mdates.HourLocator(interval=6))
+#     axs[3].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+#     plt.xticks(rotation=45)
+
+#     plt.tight_layout()
+#     plt.show()
+
+# # ---- EDIT THESE SETTINGS TO CHANGE INTERVAL AND DURATION ----
+# TRADE_INTERVAL_HOURS = 1      # Set to 1 for hourly, 24 for daily, etc.
+# TRADE_DURATION = "1 week"     # <--- Change this to your desired duration
+
+# def parse_duration(duration_str):
+#     duration_str = duration_str.lower().strip()
+#     if "day" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(days=n)
+#     elif "week" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(weeks=n)
+#     elif "month" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(days=30 * n)
+#     else:
+#         return timedelta(weeks=1)
+
+# def load_config():
+#     config = {}
+#     with open("config.cfg", "r") as f:
+#         for line in f:
+#             if line.strip() and not line.startswith('#'):
+#                 parts = line.strip().split('=', 1)
+#                 key = parts[0].strip()
+#                 value = parts[1].strip() if len(parts) > 1 else ''
+#                 if value.lower() == 'true':
+#                     config[key] = True
+#                 elif value.lower() == 'false':
+#                     config[key] = False
+#                 elif value.replace('.', '', 1).isdigit():
+#                     config[key] = float(value)
+#                 else:
+#                     config[key] = value
+#     print(f"Fetched Config : {config}")
+#     return config
+
+# def generate_md_report(current_date, row, indicators, portfolio, current_price):
+#     md_content = f"""
+# # Complete Bitcoin Data Collection Report
+
+# ## Yahoo Finance Data
+
+# | Date | Open | High | Low | Close | Volume |
+# |------|------|------|-----|-------|--------|
+# | {current_date.strftime('%Y-%m-%d %H:%M:%S')} | ${row['open']:,.2f} | ${row['high']:,.2f} | ${row['low']:,.2f} | ${row['close']:,.2f} | {row['volume']:,.0f} |
+
+# ### Technical Indicators (Current Values)
+
+# - **ATR (14)**: ${indicators['atr_14'] if indicators['atr_14'] is not None else 'N/A'}
+# - **RSI (14)**: {indicators['rsi_14'] if indicators['rsi_14'] is not None else 'N/A'}
+# - **SMA 20**: ${indicators['sma_20'] if indicators['sma_20'] is not None else 'N/A'}
+# - **SMA 50**: ${indicators['sma_50'] if indicators['sma_50'] is not None else 'N/A'}
+# - **EMA 12**: ${indicators['ema_12'] if indicators['ema_12'] is not None else 'N/A'}
+# - **EMA 26**: ${indicators['ema_26'] if indicators['ema_26'] is not None else 'N/A'}
+# - **Bollinger Upper (20)**: ${indicators['bb_upper'] if indicators['bb_upper'] is not None else 'N/A'}
+# - **Bollinger Middle (20)**: ${indicators['bb_middle'] if indicators['bb_middle'] is not None else 'N/A'}
+# - **Bollinger Lower (20)**: ${indicators['bb_lower'] if indicators['bb_lower'] is not None else 'N/A'}
+# - **MACD**: {indicators['macd'] if indicators['macd'] is not None else 'N/A'}
+# - **MACD Signal**: {indicators['macd_signal'] if indicators['macd_signal'] is not None else 'N/A'}
+# - **Volume SMA 20**: {indicators['volume_sma_20'] if indicators['volume_sma_20'] is not None else 'N/A'}
+# - **ATR Volatility Ratio**: {indicators['atr_volatility_ratio'] if indicators['atr_volatility_ratio'] is not None else 'N/A'}
+
+# ## Portfolio Status
+
+# - BTC: {portfolio['btc']}
+# - USDT: {portfolio['usdt']}
+# - Portfolio Value: {portfolio['btc'] * current_price + portfolio['usdt']}
+# """
+#     return md_content
+
+# async def run_backtest():
+#     data_file = 'btc_hourly_yahoo_binance_6mo.csv'
+#     if not os.path.exists(data_file):
+#         data_file = 'btc_hourly_yahoo_binance_6mo.xlsx'
+#     if not os.path.exists(data_file):
+#         print(f"ERROR: Data file '{data_file}' not found!")
+#         return
+
+#     if data_file.endswith('.csv'):
+#         df = pd.read_csv(data_file)
+#     else:
+#         df = pd.read_excel(data_file)
+#     df['date'] = pd.to_datetime(df['date'])
+#     df.sort_values('date', inplace=True)
+
+#     print(f"[INFO] Data range: {df['date'].min().strftime('%Y-%m-%d %H:%M:%S')} to {df['date'].max().strftime('%Y-%m-%d %H:%M:%S')}")
+
+#     df['close'] = df['binance_close'].fillna(df['yahoo_close'])
+#     df['open'] = df['binance_open'].fillna(df['yahoo_open'])
+#     df['high'] = df['binance_high'].fillna(df['yahoo_high'])
+#     df['low'] = df['binance_low'].fillna(df['yahoo_low'])
+#     df['volume'] = df['binance_volume'].fillna(df['yahoo_volume'])
+
+#     config = load_config()
+#     budget = config.get('budget', 10000)
+#     portfolio = {'btc': 0.0, 'usdt': budget}
+#     trade_log = []
+#     trade_log_path = "backtest_trade_log.csv"
+#     if os.path.exists(trade_log_path):
+#         os.remove(trade_log_path)
+
+#     subsample = TRADE_INTERVAL_HOURS
+#     start_date = df['date'].min()
+#     #end_date = df['date'].max()
+#     duration = parse_duration(TRADE_DURATION)
+#     end_date = start_date + duration
+#     #end_date = df['date'].max() 
+#     #start_date = end_date - duration
+#     print(f"[INFO] Trading period: {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
+
+#     df_test = df[df['date'] >= start_date]
+#     if len(df_test) == 0:
+#         print(f"[ERROR] No data found for the selected period!")
+#         return
+
+#     df_subsampled = df_test.iloc[::subsample, :].reset_index(drop=True)
+#     print(f"[INFO] Running backtest on {len(df_subsampled)} data points (interval: {subsample}h, period: {TRADE_DURATION})")
+
+#     for i, row in df_subsampled.iterrows():
+#         if pd.isna(row['close']):
+#             continue
+#         current_date = row['date']
+#         current_price = row['close']
+
+#         # --- Recalculate indicators using data up to current row ---
+#         df_slice = df_test[df_test['date'] <= current_date].copy()
+#         min_window = 14  # Largest window used for indicators
+#         if len(df_slice) < min_window:
+#             indicators = {
+#                 'atr_14': None,
+#                 'rsi_14': None,
+#                 'sma_20': None,
+#                 'sma_50': None,
+#                 'ema_12': None,
+#                 'ema_26': None,
+#                 'bb_upper': None,
+#                 'bb_middle': None,
+#                 'bb_lower': None,
+#                 'macd': None,
+#                 'macd_signal': None,
+#                 'volume_sma_20': None,
+#                 'atr_volatility_ratio': None
+#             }
+#         else:
+#             indicators = {
+#                 'atr_14': ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1],
+#                 'rsi_14': ta.momentum.RSIIndicator(df_slice['close'], window=14).rsi().iloc[-1],
+#                 'sma_20': ta.trend.sma_indicator(df_slice['close'], window=20).iloc[-1],
+#                 'sma_50': ta.trend.sma_indicator(df_slice['close'], window=50).iloc[-1],
+#                 'ema_12': ta.trend.ema_indicator(df_slice['close'], window=12).iloc[-1],
+#                 'ema_26': ta.trend.ema_indicator(df_slice['close'], window=26).iloc[-1],
+#                 'bb_upper': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_hband().iloc[-1],
+#                 'bb_middle': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_mavg().iloc[-1],
+#                 'bb_lower': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_lband().iloc[-1],
+#                 'macd': ta.trend.MACD(df_slice['close']).macd().iloc[-1],
+#                 'macd_signal': ta.trend.MACD(df_slice['close']).macd_signal().iloc[-1],
+#                 'volume_sma_20': ta.trend.sma_indicator(df_slice['volume'], window=20).iloc[-1],
+#                 'atr_volatility_ratio': (ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1] / df_slice['close'].iloc[-1])
+#             }
+
+#         md_content = generate_md_report(current_date, row, indicators, portfolio, current_price)
+#         context = {
+#             'md_content': md_content,
+#             'portfolio': portfolio,
+#             'trade_history': trade_log[-10:]
+#         }
+#         #pprint(f"Context: {trade_log[-10:]}")
+#         decision = get_llm_decision(context)
+#         pprint(f"LLM Decision : {decision}")
+#         action = decision.get('action', 'None')
+#         quantity = decision.get('quantity', 0)
+
+#         # --- Portfolio management ---
+#         value_usd_cost = 0
+#         reason = None
+
+#         if action == 'BUY':
+#             value_usd_cost = quantity * current_price
+#             if quantity <= 0:
+#                 reason = "LLM suggested BUY with zero or negative quantity"
+#             elif portfolio['usdt'] < value_usd_cost:
+#                 reason = f"Insufficient USD balance for BUY (needed ${value_usd_cost:.2f}, available ${portfolio['usdt']:.2f})"
+#             else:
+#                 portfolio['usdt'] -= value_usd_cost
+#                 portfolio['btc'] += quantity
+
+#         elif action == 'SELL':
+#             value_usd_cost = quantity * current_price
+#             if quantity <= 0:
+#                 reason = "LLM suggested SELL with zero or negative quantity"
+#             elif portfolio['btc'] < quantity:
+#                 reason = f"Insufficient BTC balance for SELL (needed {quantity:.6f}, available {portfolio['btc']:.6f})"
+#             else:
+#                 portfolio['btc'] -= quantity
+#                 portfolio['usdt'] += value_usd_cost
+
+#         else:
+#             quantity = 0
+#             value_usd_cost = 0
+
+#         if reason:
+#             action = f"Overwrite LLM Decision to HOLD: {reason}"
+#             quantity = 0
+#             value_usd_cost = 0
+
+#         btc_value_usd = portfolio['btc'] * current_price
+#         total_portfolio_value = btc_value_usd + portfolio['usdt']
+
+#         trade_record = {
+#             'Timestamp': current_date.strftime('%Y-%m-%d %H:%M:%S'),
+#             'Type': action,
+#             'Price BTC': current_price,
+#             'Quantity': quantity,
+#             'Value USD (Cost)': value_usd_cost,
+#             'BTC BALANCE': portfolio['btc'],
+#             'BTC VALUE USD': btc_value_usd,
+#             'Total Portfolio Value': total_portfolio_value,
+#             'USD BALANCE': portfolio['usdt'],
+#         }
+#         trade_log.append(trade_record)
+#         pd.DataFrame(trade_log).to_csv(trade_log_path, index=False)
+
+# if __name__ == "__main__":
+#     print("Running in backtest mode...")
+#     #asyncio.run(run_backtest())
+#     print("Backtest completed.")
+#     # Call this after your backtest
+#     plot_trade_log()
+
+
+# ------------------------------------------ USD PROFIT SYSTEM PORTFOLIO ---------------------------------------------
+
+# import os
+# import sys
+# import asyncio
+# import pandas as pd
+# from datetime import datetime, timedelta
+# import ta
+# import json
+# from llm_decision_strategy_05 import get_llm_decision
+# from pprint import pprint
+# import matplotlib.pyplot as plt
+# import matplotlib.dates as mdates
+
+# BINANCE_FEE_RATE = 0.001  # 0.1% per trade
+
+# def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
+#     df = pd.read_csv(trade_log_path)
+#     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+#     plt.style.use('dark_background')
+
+#     fig, axs = plt.subplots(5, 1, figsize=(16, 20), sharex=True)
+
+#     axs[0].plot(df['Timestamp'], df['USD BALANCE'], color='lime', label='USD Balance')
+#     axs[0].set_ylabel('USD Balance')
+#     axs[0].set_title('USD Balance Over Time')
+#     axs[0].legend(loc='upper right')
+#     axs[0].grid(True, alpha=0.3)
+
+#     axs[1].plot(df['Timestamp'], df['USD PROFIT'], color='gold', label='USD Profit')
+#     axs[1].set_ylabel('USD Profit')
+#     axs[1].set_title('USD Profit Over Time')
+#     axs[1].legend(loc='upper right')
+#     axs[1].grid(True, alpha=0.3)
+
+#     axs[2].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
+#     axs[2].set_ylabel('BTC Value (USD)')
+#     axs[2].set_title('BTC Value (USD) Over Time')
+#     axs[2].legend(loc='upper right')
+#     axs[2].grid(True, alpha=0.3)
+
+#     axs[3].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
+#     axs[3].set_ylabel('Portfolio Value (USD)')
+#     axs[3].set_title('Total Portfolio Value Over Time')
+#     axs[3].legend(loc='upper right')
+#     axs[3].grid(True, alpha=0.3)
+
+#     axs[4].plot(df['Timestamp'], df['Price BTC'], color='white', label='BTC Price')
+#     axs[4].set_ylabel('BTC Price')
+#     axs[4].set_title('BTC Price Over Time')
+#     axs[4].legend(loc='upper right')
+#     axs[4].grid(True, alpha=0.3)
+#     axs[4].set_xlabel('Timestamp')
+
+#     axs[4].xaxis.set_major_locator(mdates.HourLocator(interval=6))
+#     axs[4].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+#     plt.xticks(rotation=45)
+
+#     plt.tight_layout()
+#     plt.show()
+
+# TRADE_INTERVAL_HOURS = 1
+# TRADE_DURATION = "1 week"
+
+# def parse_duration(duration_str):
+#     duration_str = duration_str.lower().strip()
+#     if "day" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(days=n)
+#     elif "week" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(weeks=n)
+#     elif "month" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(days=30 * n)
+#     else:
+#         return timedelta(weeks=1)
+
+# def load_config():
+#     config = {}
+#     with open("config.cfg", "r") as f:
+#         for line in f:
+#             if line.strip() and not line.startswith('#'):
+#                 parts = line.strip().split('=', 1)
+#                 key = parts[0].strip()
+#                 value = parts[1].strip() if len(parts) > 1 else ''
+#                 if value.lower() == 'true':
+#                     config[key] = True
+#                 elif value.lower() == 'false':
+#                     config[key] = False
+#                 elif value.replace('.', '', 1).isdigit():
+#                     config[key] = float(value)
+#                 else:
+#                     config[key] = value
+#     print(f"Fetched Config : {config}")
+#     return config
+
+# def generate_md_report(current_date, row, indicators, portfolio, current_price):
+#     md_content = f"""
+# # Complete Bitcoin Data Collection Report
+
+# ## Yahoo Finance Data
+
+# | Date | Open | High | Low | Close | Volume |
+# |------|------|------|-----|-------|--------|
+# | {current_date.strftime('%Y-%m-%d %H:%M:%S')} | ${row['open']:,.2f} | ${row['high']:,.2f} | ${row['low']:,.2f} | ${row['close']:,.2f} | {row['volume']:,.0f} |
+
+# ### Technical Indicators (Current Values)
+
+# - **ATR (14)**: ${indicators['atr_14'] if indicators['atr_14'] is not None else 'N/A'}
+# - **RSI (14)**: {indicators['rsi_14'] if indicators['rsi_14'] is not None else 'N/A'}
+# - **SMA 20**: ${indicators['sma_20'] if indicators['sma_20'] is not None else 'N/A'}
+# - **SMA 50**: ${indicators['sma_50'] if indicators['sma_50'] is not None else 'N/A'}
+# - **EMA 12**: ${indicators['ema_12'] if indicators['ema_12'] is not None else 'N/A'}
+# - **EMA 26**: ${indicators['ema_26'] if indicators['ema_26'] is not None else 'N/A'}
+# - **Bollinger Upper (20)**: ${indicators['bb_upper'] if indicators['bb_upper'] is not None else 'N/A'}
+# - **Bollinger Middle (20)**: ${indicators['bb_middle'] if indicators['bb_middle'] is not None else 'N/A'}
+# - **Bollinger Lower (20)**: ${indicators['bb_lower'] if indicators['bb_lower'] is not None else 'N/A'}
+# - **MACD**: {indicators['macd'] if indicators['macd'] is not None else 'N/A'}
+# - **MACD Signal**: {indicators['macd_signal'] if indicators['macd_signal'] is not None else 'N/A'}
+# - **Volume SMA 20**: {indicators['volume_sma_20'] if indicators['volume_sma_20'] is not None else 'N/A'}
+# - **ATR Volatility Ratio**: {indicators['atr_volatility_ratio'] if indicators['atr_volatility_ratio'] is not None else 'N/A'}
+
+# ## Portfolio Status
+
+# - BTC: {portfolio['btc']}
+# - USDT: {portfolio['usdt']}
+# - USD PROFIT: {portfolio['usd_profit']}
+# - Portfolio Value: {portfolio['btc'] * current_price + portfolio['usdt']}
+# """
+#     return md_content
+
+# async def run_backtest():
+#     data_file = 'btc_hourly_yahoo_binance_6mo.csv'
+#     if not os.path.exists(data_file):
+#         data_file = 'btc_hourly_yahoo_binance_6mo.xlsx'
+#     if not os.path.exists(data_file):
+#         print(f"ERROR: Data file '{data_file}' not found!")
+#         return
+
+#     if data_file.endswith('.csv'):
+#         df = pd.read_csv(data_file)
+#     else:
+#         df = pd.read_excel(data_file)
+#     df['date'] = pd.to_datetime(df['date'])
+#     df.sort_values('date', inplace=True)
+
+#     print(f"[INFO] Data range: {df['date'].min().strftime('%Y-%m-%d %H:%M:%S')} to {df['date'].max().strftime('%Y-%m-%d %H:%M:%S')}")
+
+#     df['close'] = df['binance_close'].fillna(df['yahoo_close'])
+#     df['open'] = df['binance_open'].fillna(df['yahoo_open'])
+#     df['high'] = df['binance_high'].fillna(df['yahoo_high'])
+#     df['low'] = df['binance_low'].fillna(df['yahoo_low'])
+#     df['volume'] = df['binance_volume'].fillna(df['yahoo_volume'])
+
+#     config = load_config()
+#     budget = config.get('budget', 10000)
+#     portfolio = {'btc': 0.0, 'usdt': budget, 'usd_profit': 0.0}
+#     trade_log = []
+#     trade_log_path = "backtest_trade_log.csv"
+#     if os.path.exists(trade_log_path):
+#         os.remove(trade_log_path)
+
+#     subsample = TRADE_INTERVAL_HOURS
+#     start_date = df['date'].min()
+#     duration = parse_duration(TRADE_DURATION)
+#     end_date = start_date + duration
+#     print(f"[INFO] Trading period: {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
+
+#     df_test = df[df['date'] >= start_date]
+#     if len(df_test) == 0:
+#         print(f"[ERROR] No data found for the selected period!")
+#         return
+
+#     df_subsampled = df_test.iloc[::subsample, :].reset_index(drop=True)
+#     print(f"[INFO] Running backtest on {len(df_subsampled)} data points (interval: {subsample}h, period: {TRADE_DURATION})")
+
+#     for i, row in df_subsampled.iterrows():
+#         if pd.isna(row['close']):
+#             continue
+#         current_date = row['date']
+#         current_price = row['close']
+
+#         df_slice = df_test[df_test['date'] <= current_date].copy()
+#         min_window = 14
+#         if len(df_slice) < min_window:
+#             indicators = {
+#                 'atr_14': None,
+#                 'rsi_14': None,
+#                 'sma_20': None,
+#                 'sma_50': None,
+#                 'ema_12': None,
+#                 'ema_26': None,
+#                 'bb_upper': None,
+#                 'bb_middle': None,
+#                 'bb_lower': None,
+#                 'macd': None,
+#                 'macd_signal': None,
+#                 'volume_sma_20': None,
+#                 'atr_volatility_ratio': None
+#             }
+#         else:
+#             indicators = {
+#                 'atr_14': ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1],
+#                 'rsi_14': ta.momentum.RSIIndicator(df_slice['close'], window=14).rsi().iloc[-1],
+#                 'sma_20': ta.trend.sma_indicator(df_slice['close'], window=20).iloc[-1],
+#                 'sma_50': ta.trend.sma_indicator(df_slice['close'], window=50).iloc[-1],
+#                 'ema_12': ta.trend.ema_indicator(df_slice['close'], window=12).iloc[-1],
+#                 'ema_26': ta.trend.ema_indicator(df_slice['close'], window=26).iloc[-1],
+#                 'bb_upper': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_hband().iloc[-1],
+#                 'bb_middle': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_mavg().iloc[-1],
+#                 'bb_lower': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_lband().iloc[-1],
+#                 'macd': ta.trend.MACD(df_slice['close']).macd().iloc[-1],
+#                 'macd_signal': ta.trend.MACD(df_slice['close']).macd_signal().iloc[-1],
+#                 'volume_sma_20': ta.trend.sma_indicator(df_slice['volume'], window=20).iloc[-1],
+#                 'atr_volatility_ratio': (ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1] / df_slice['close'].iloc[-1])
+#             }
+
+#         md_content = generate_md_report(current_date, row, indicators, portfolio, current_price)
+#         context = {
+#             'md_content': md_content,
+#             'portfolio': portfolio,
+#             'trade_history': trade_log[-10:]
+#         }
+#         decision = get_llm_decision(context)
+#         pprint(f"LLM Decision : {decision}")
+#         action = decision.get('action', 'None')
+#         quantity = decision.get('quantity', 0)
+#         profit_amount = decision.get('profit_amount', 0)
+
+#         value_usd_cost = 0
+#         fee = 0
+#         reason = None
+
+#         if action == 'BUY':
+#             value_usd_cost = quantity * current_price
+#             fee = value_usd_cost * BINANCE_FEE_RATE
+#             total_cost = value_usd_cost + fee
+#             if quantity <= 0:
+#                 reason = "LLM suggested BUY with zero or negative quantity"
+#             elif portfolio['usdt'] < total_cost:
+#                 reason = f"Insufficient USD balance for BUY (needed ${total_cost:.2f}, available ${portfolio['usdt']:.2f})"
+#             else:
+#                 portfolio['usdt'] -= total_cost
+#                 portfolio['btc'] += quantity
+#         elif action == 'SELL':
+#             value_usd_cost = quantity * current_price
+#             fee = value_usd_cost * BINANCE_FEE_RATE
+#             net_usd = value_usd_cost - fee
+#             if quantity <= 0:
+#                 reason = "LLM suggested SELL with zero or negative quantity"
+#             elif portfolio['btc'] < quantity:
+#                 reason = f"Insufficient BTC balance for SELL (needed {quantity:.6f}, available {portfolio['btc']:.6f})"
+#             else:
+#                 portfolio['btc'] -= quantity
+#                 portfolio['usdt'] += net_usd
+#         elif action == 'PROFIT':
+#             if profit_amount <= 0:
+#                 reason = "LLM suggested PROFIT with zero or negative amount"
+#             elif portfolio['usdt'] < profit_amount:
+#                 reason = f"Insufficient USD balance for PROFIT extraction (needed ${profit_amount:.2f}, available ${portfolio['usdt']:.2f})"
+#             else:
+#                 portfolio['usdt'] -= profit_amount
+#                 portfolio['usd_profit'] += profit_amount
+#             value_usd_cost = profit_amount
+#         else:
+#             quantity = 0
+#             value_usd_cost = 0
+#             fee = 0
+
+#         if reason:
+#             action = f"Overwrite LLM Decision to HOLD: {reason}"
+#             quantity = 0
+#             value_usd_cost = 0
+#             fee = 0
+
+#         btc_value_usd = portfolio['btc'] * current_price
+#         total_portfolio_value = btc_value_usd + portfolio['usdt']
+
+#         trade_record = {
+#             'Timestamp': current_date.strftime('%Y-%m-%d %H:%M:%S'),
+#             'Type': action if action != 'PROFIT' else 'PROFIT',
+#             'Price BTC': current_price,
+#             'Quantity': quantity if action != 'PROFIT' else 0,
+#             'Value USD (Cost)': value_usd_cost,
+#             'Fee USD': fee,
+#             'BTC BALANCE': portfolio['btc'],
+#             'BTC VALUE USD': btc_value_usd,
+#             'Total Portfolio Value': total_portfolio_value,
+#             'USD BALANCE': portfolio['usdt'],
+#             'USD PROFIT': portfolio['usd_profit'],
+#         }
+#         trade_log.append(trade_record)
+#         pd.DataFrame(trade_log).to_csv(trade_log_path, index=False)
+
+# if __name__ == "__main__":
+#     print("Running in backtest mode...")
+#     asyncio.run(run_backtest())
+#     print("Backtest completed.")
+#     #plot_trade_log()
+
+# ------------------------------------------ USD PROFIT SYSTEM with Dynamic Budget ---------------------------------------------
+# import os
+# import sys
+# import asyncio
+# import pandas as pd
+# from datetime import datetime, timedelta
+# import ta
+# import json
+# from llm_decision_strategy_05 import get_llm_decision
+# from pprint import pprint
+# import matplotlib.pyplot as plt
+# import matplotlib.dates as mdates
+
+# BINANCE_FEE_RATE = 0.001  # 0.1% per trade
+
+# def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
+#     df = pd.read_csv(trade_log_path)
+#     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
+#     plt.style.use('dark_background')
+
+#     fig, axs = plt.subplots(5, 1, figsize=(16, 20), sharex=True)
+
+#     axs[0].plot(df['Timestamp'], df['USD BALANCE'], color='lime', label='USD Balance')
+#     axs[0].set_ylabel('USD Balance')
+#     axs[0].set_title('USD Balance Over Time')
+#     axs[0].legend(loc='upper right')
+#     axs[0].grid(True, alpha=0.3)
+
+#     axs[1].plot(df['Timestamp'], df['USD PROFIT'], color='gold', label='USD Profit')
+#     axs[1].set_ylabel('USD Profit')
+#     axs[1].set_title('USD Profit Over Time')
+#     axs[1].legend(loc='upper right')
+#     axs[1].grid(True, alpha=0.3)
+
+#     axs[2].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
+#     axs[2].set_ylabel('BTC Value (USD)')
+#     axs[2].set_title('BTC Value (USD) Over Time')
+#     axs[2].legend(loc='upper right')
+#     axs[2].grid(True, alpha=0.3)
+
+#     axs[3].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
+#     axs[3].set_ylabel('Portfolio Value (USD)')
+#     axs[3].set_title('Total Portfolio Value Over Time')
+#     axs[3].legend(loc='upper right')
+#     axs[3].grid(True, alpha=0.3)
+
+#     axs[4].plot(df['Timestamp'], df['Price BTC'], color='white', label='BTC Price')
+#     axs[4].set_ylabel('BTC Price')
+#     axs[4].set_title('BTC Price Over Time')
+#     axs[4].legend(loc='upper right')
+#     axs[4].grid(True, alpha=0.3)
+#     axs[4].set_xlabel('Timestamp')
+
+#     axs[4].xaxis.set_major_locator(mdates.HourLocator(interval=6))
+#     axs[4].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
+#     plt.xticks(rotation=45)
+
+#     plt.tight_layout()
+#     plt.show()
+
+# TRADE_INTERVAL_HOURS = 1
+# TRADE_DURATION = "1 week"
+
+# def parse_duration(duration_str):
+#     duration_str = duration_str.lower().strip()
+#     if "day" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(days=n)
+#     elif "week" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(weeks=n)
+#     elif "month" in duration_str:
+#         n = int(duration_str.split()[0])
+#         return timedelta(days=30 * n)
+#     else:
+#         return timedelta(weeks=1)
+
+# def load_config():
+#     config = {}
+#     with open("config.cfg", "r") as f:
+#         for line in f:
+#             if line.strip() and not line.startswith('#'):
+#                 parts = line.strip().split('=', 1)
+#                 key = parts[0].strip()
+#                 value = parts[1].strip() if len(parts) > 1 else ''
+#                 if value.lower() == 'true':
+#                     config[key] = True
+#                 elif value.lower() == 'false':
+#                     config[key] = False
+#                 elif value.replace('.', '', 1).isdigit():
+#                     config[key] = float(value)
+#                 else:
+#                     config[key] = value
+#     print(f"Fetched Config : {config}")
+#     return config
+
+# def generate_md_report(current_date, row, indicators, portfolio, current_price, profit_threshold):
+#     md_content = f"""
+# # Complete Bitcoin Data Collection Report
+
+# ## Yahoo Finance Data
+
+# | Date | Open | High | Low | Close | Volume |
+# |------|------|------|-----|-------|--------|
+# | {current_date.strftime('%Y-%m-%d %H:%M:%S')} | ${row['open']:,.2f} | ${row['high']:,.2f} | ${row['low']:,.2f} | ${row['close']:,.2f} | {row['volume']:,.0f} |
+
+# ### Technical Indicators (Current Values)
+
+# - **ATR (14)**: ${indicators['atr_14'] if indicators['atr_14'] is not None else 'N/A'}
+# - **RSI (14)**: {indicators['rsi_14'] if indicators['rsi_14'] is not None else 'N/A'}
+# - **SMA 20**: ${indicators['sma_20'] if indicators['sma_20'] is not None else 'N/A'}
+# - **SMA 50**: ${indicators['sma_50'] if indicators['sma_50'] is not None else 'N/A'}
+# - **EMA 12**: ${indicators['ema_12'] if indicators['ema_12'] is not None else 'N/A'}
+# - **EMA 26**: ${indicators['ema_26'] if indicators['ema_26'] is not None else 'N/A'}
+# - **Bollinger Upper (20)**: ${indicators['bb_upper'] if indicators['bb_upper'] is not None else 'N/A'}
+# - **Bollinger Middle (20)**: ${indicators['bb_middle'] if indicators['bb_middle'] is not None else 'N/A'}
+# - **Bollinger Lower (20)**: ${indicators['bb_lower'] if indicators['bb_lower'] is not None else 'N/A'}
+# - **MACD**: {indicators['macd'] if indicators['macd'] is not None else 'N/A'}
+# - **MACD Signal**: {indicators['macd_signal'] if indicators['macd_signal'] is not None else 'N/A'}
+# - **Volume SMA 20**: {indicators['volume_sma_20'] if indicators['volume_sma_20'] is not None else 'N/A'}
+# - **ATR Volatility Ratio**: {indicators['atr_volatility_ratio'] if indicators['atr_volatility_ratio'] is not None else 'N/A'}
+
+# ## Portfolio Status
+
+# - BTC: {portfolio['btc']}
+# - USDT: {portfolio['usdt']}
+# - USD PROFIT: {portfolio['usd_profit']}
+# - Portfolio Value: {portfolio['btc'] * current_price + portfolio['usdt']}
+# - PROFIT THRESHOLD (Dynamic Budget): {profit_threshold}
+# """
+#     return md_content
+
+# async def run_backtest():
+#     data_file = 'btc_hourly_yahoo_binance_6mo.csv'
+#     if not os.path.exists(data_file):
+#         data_file = 'btc_hourly_yahoo_binance_6mo.xlsx'
+#     if not os.path.exists(data_file):
+#         print(f"ERROR: Data file '{data_file}' not found!")
+#         return
+
+#     if data_file.endswith('.csv'):
+#         df = pd.read_csv(data_file)
+#     else:
+#         df = pd.read_excel(data_file)
+#     df['date'] = pd.to_datetime(df['date'])
+#     df.sort_values('date', inplace=True)
+
+#     print(f"[INFO] Data range: {df['date'].min().strftime('%Y-%m-%d %H:%M:%S')} to {df['date'].max().strftime('%Y-%m-%d %H:%M:%S')}")
+
+#     df['close'] = df['binance_close'].fillna(df['yahoo_close'])
+#     df['open'] = df['binance_open'].fillna(df['yahoo_open'])
+#     df['high'] = df['binance_high'].fillna(df['yahoo_high'])
+#     df['low'] = df['binance_low'].fillna(df['yahoo_low'])
+#     df['volume'] = df['binance_volume'].fillna(df['yahoo_volume'])
+
+#     config = load_config()
+#     # ------------------------------------ Setting Initial Budget ------------------------------------
+#     initial_budget = config.get('budget', 10000)
+#     profit_threshold = initial_budget
+#     portfolio = {'btc': 0.0, 'usdt': initial_budget, 'usd_profit': 0.0}
+#     trade_log = []
+#     trade_log_path = "backtest_trade_log.csv"
+#     if os.path.exists(trade_log_path):
+#         os.remove(trade_log_path)
+
+#     subsample = TRADE_INTERVAL_HOURS
+#     start_date = df['date'].min()
+#     duration = parse_duration(TRADE_DURATION)
+#     end_date = start_date + duration
+#     print(f"[INFO] Trading period: {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
+
+#     df_test = df[df['date'] >= start_date]
+#     if len(df_test) == 0:
+#         print(f"[ERROR] No data found for the selected period!")
+#         return
+
+#     df_subsampled = df_test.iloc[::subsample, :].reset_index(drop=True)
+#     print(f"[INFO] Running backtest on {len(df_subsampled)} data points (interval: {subsample}h, period: {TRADE_DURATION})")
+
+
+#     for i, row in df_subsampled.iterrows():
+#         if pd.isna(row['close']):
+#             continue
+#         current_date = row['date']
+#         current_price = row['close']
+
+#         df_slice = df_test[df_test['date'] <= current_date].copy()
+#         min_window = 14
+#         if len(df_slice) < min_window:
+#             indicators = {
+#                 'atr_14': None,
+#                 'rsi_14': None,
+#                 'sma_20': None,
+#                 'sma_50': None,
+#                 'ema_12': None,
+#                 'ema_26': None,
+#                 'bb_upper': None,
+#                 'bb_middle': None,
+#                 'bb_lower': None,
+#                 'macd': None,
+#                 'macd_signal': None,
+#                 'volume_sma_20': None,
+#                 'atr_volatility_ratio': None
+#             }
+#         else:
+#             indicators = {
+#                 'atr_14': ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1],
+#                 'rsi_14': ta.momentum.RSIIndicator(df_slice['close'], window=14).rsi().iloc[-1],
+#                 'sma_20': ta.trend.sma_indicator(df_slice['close'], window=20).iloc[-1],
+#                 'sma_50': ta.trend.sma_indicator(df_slice['close'], window=50).iloc[-1],
+#                 'ema_12': ta.trend.ema_indicator(df_slice['close'], window=12).iloc[-1],
+#                 'ema_26': ta.trend.ema_indicator(df_slice['close'], window=26).iloc[-1],
+#                 'bb_upper': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_hband().iloc[-1],
+#                 'bb_middle': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_mavg().iloc[-1],
+#                 'bb_lower': ta.volatility.BollingerBands(df_slice['close'], window=20, window_dev=2).bollinger_lband().iloc[-1],
+#                 'macd': ta.trend.MACD(df_slice['close']).macd().iloc[-1],
+#                 'macd_signal': ta.trend.MACD(df_slice['close']).macd_signal().iloc[-1],
+#                 'volume_sma_20': ta.trend.sma_indicator(df_slice['volume'], window=20).iloc[-1],
+#                 'atr_volatility_ratio': (ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1] / df_slice['close'].iloc[-1])
+#             }
+
+#         # Pass dynamic profit threshold to LLM context
+#         md_content = generate_md_report(current_date, row, indicators, portfolio, current_price, profit_threshold)
+#         context = {
+#             'md_content': md_content,
+#             'portfolio': portfolio,
+#             'profit_threshold': profit_threshold,
+#             'trade_history': trade_log[-10:]
+#         }
+
+#         # ------------------------------------------------------- LLM Decision -------------------------------------------------------
+#         decision = get_llm_decision(context)
+#         pprint(f"LLM Decision : {decision}")
+#         action = decision.get('action', 'None')
+#         quantity = decision.get('quantity', 0)
+#         profit_amount = decision.get('profit_amount', 0)
+
+#         value_usd_cost = 0
+#         fee = 0
+#         reason = None
+
+#         if action == 'BUY':
+#             value_usd_cost = quantity * current_price
+#             fee = value_usd_cost * BINANCE_FEE_RATE
+#             total_cost = value_usd_cost + fee
+#             if quantity <= 0:
+#                 reason = "LLM suggested BUY with zero or negative quantity"
+#             elif portfolio['usdt'] < total_cost:
+#                 reason = f"Insufficient USD balance for BUY (needed ${total_cost:.2f}, available ${portfolio['usdt']:.2f})"
+#             else:
+#                 portfolio['usdt'] -= total_cost
+#                 portfolio['btc'] += quantity
+#         elif action == 'SELL':
+#             value_usd_cost = quantity * current_price
+#             fee = value_usd_cost * BINANCE_FEE_RATE
+#             net_usd = value_usd_cost - fee
+#             if quantity <= 0:
+#                 reason = "LLM suggested SELL with zero or negative quantity"
+#             elif portfolio['btc'] < quantity:
+#                 reason = f"Insufficient BTC balance for SELL (needed {quantity:.6f}, available {portfolio['btc']:.6f})"
+#             else:
+#                 portfolio['btc'] -= quantity
+#                 portfolio['usdt'] += net_usd
+#         elif action == 'PROFIT':
+#             if profit_amount <= 0:
+#                 reason = "LLM suggested PROFIT with zero or negative amount"
+#             elif portfolio['usdt'] < profit_amount:
+#                 reason = f"Insufficient USD balance for PROFIT extraction (needed ${profit_amount:.2f}, available ${portfolio['usdt']:.2f})"
+#             else:
+#                 portfolio['usdt'] -= profit_amount
+#                 portfolio['usd_profit'] += profit_amount
+#                 profit_threshold += profit_amount  # Update dynamic profit threshold
+#             value_usd_cost = profit_amount
+#         else:
+#             quantity = 0
+#             value_usd_cost = 0
+#             fee = 0
+
+#         if reason:
+#             action = f"Overwrite LLM Decision to HOLD: {reason}"
+#             quantity = 0
+#             value_usd_cost = 0
+#             fee = 0
+
+#         btc_value_usd = portfolio['btc'] * current_price
+#         total_portfolio_value = btc_value_usd + portfolio['usdt']
+
+#         trade_record = {
+#             'Timestamp': current_date.strftime('%Y-%m-%d %H:%M:%S'),
+#             'Type': action if action != 'PROFIT' else 'PROFIT',
+#             'Price BTC': current_price,
+#             'Quantity': quantity if action != 'PROFIT' else 0,
+#             'Value USD (Cost)': value_usd_cost,
+#             'Fee USD': fee,
+#             'BTC BALANCE': portfolio['btc'],
+#             'BTC VALUE USD': btc_value_usd,
+#             'Total Portfolio Value': total_portfolio_value,
+#             'USD BALANCE': portfolio['usdt'],
+#             'USD PROFIT': portfolio['usd_profit'],
+#             'PROFIT THRESHOLD': profit_threshold
+#         }
+#         trade_log.append(trade_record)
+#         pd.DataFrame(trade_log).to_csv(trade_log_path, index=False)
+
+# if __name__ == "__main__":
+#     print("Running in backtest mode...")
+#     asyncio.run(run_backtest())
+#     print("Backtest completed.")
+#     plot_trade_log()
+
+
+# ------------------------------------------ Monitoring Open High Low and Close BTC prices and LLM Rationale in Logs now and new plot ---------------------------------------------
+
 import os
 import sys
 import asyncio
@@ -1814,43 +2715,46 @@ from pprint import pprint
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
+BINANCE_FEE_RATE = 0.001  # 0.1% per trade
+
 def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
     df = pd.read_csv(trade_log_path)
     df['Timestamp'] = pd.to_datetime(df['Timestamp'])
     plt.style.use('dark_background')
 
-    fig, axs = plt.subplots(4, 1, figsize=(16, 16), sharex=True)
+    fig, axs = plt.subplots(4, 1, figsize=(16, 18), sharex=True)
 
-    # USD Balance
-    axs[0].plot(df['Timestamp'], df['USD BALANCE'], color='lime', label='USD Balance')
-    axs[0].set_ylabel('USD Balance')
-    axs[0].set_title('USD Balance Over Time')
+    # Plot BTC High, Low, Close
+    axs[0].plot(df['Timestamp'], df['High'], color='red', label='BTC High')
+    axs[0].plot(df['Timestamp'], df['Low'], color='blue', label='BTC Low')
+    axs[0].plot(df['Timestamp'], df['Close'], color='white', label='BTC Close')
+    axs[0].set_ylabel('BTC Price')
+    axs[0].set_title('BTC High/Low/Close Over Time')
     axs[0].legend(loc='upper right')
     axs[0].grid(True, alpha=0.3)
 
-    # Total Portfolio Value
-    axs[2].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
-    axs[2].set_ylabel('Portfolio Value (USD)')
-    axs[2].set_title('Total Portfolio Value Over Time')
-    axs[2].legend(loc='upper right')
-    axs[2].grid(True, alpha=0.3)
-
-    # BTC Value (USD)
-    axs[1].plot(df['Timestamp'], df['BTC VALUE USD'], color='orange', label='BTC Value (USD)')
-    axs[1].set_ylabel('BTC Value (USD)')
-    axs[1].set_title('BTC Value (USD) Over Time')
+    # USD Balance
+    axs[1].plot(df['Timestamp'], df['USD BALANCE'], color='lime', label='USD Balance')
+    axs[1].set_ylabel('USD Balance')
+    axs[1].set_title('USD Balance Over Time')
     axs[1].legend(loc='upper right')
     axs[1].grid(True, alpha=0.3)
 
-    # BTC Price
-    axs[3].plot(df['Timestamp'], df['Price BTC'], color='white', label='BTC Price')
-    axs[3].set_ylabel('BTC Price')
-    axs[3].set_title('BTC Price Over Time')
+    # USD Profit
+    axs[2].plot(df['Timestamp'], df['USD PROFIT'], color='gold', label='USD Profit')
+    axs[2].set_ylabel('USD Profit')
+    axs[2].set_title('USD Profit Over Time')
+    axs[2].legend(loc='upper right')
+    axs[2].grid(True, alpha=0.3)
+
+    # Portfolio Value
+    axs[3].plot(df['Timestamp'], df['Total Portfolio Value'], color='deepskyblue', label='Total Portfolio Value')
+    axs[3].set_ylabel('Portfolio Value (USD)')
+    axs[3].set_title('Total Portfolio Value Over Time')
     axs[3].legend(loc='upper right')
     axs[3].grid(True, alpha=0.3)
     axs[3].set_xlabel('Timestamp')
 
-    # Format x-axis for hourly ticks
     axs[3].xaxis.set_major_locator(mdates.HourLocator(interval=6))
     axs[3].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d %H:%M'))
     plt.xticks(rotation=45)
@@ -1858,9 +2762,8 @@ def plot_trade_log(trade_log_path="backtest_trade_log.csv"):
     plt.tight_layout()
     plt.show()
 
-# ---- EDIT THESE SETTINGS TO CHANGE INTERVAL AND DURATION ----
-TRADE_INTERVAL_HOURS = 1      # Set to 1 for hourly, 24 for daily, etc.
-TRADE_DURATION = "1 week"     # <--- Change this to your desired duration
+TRADE_INTERVAL_HOURS = 1
+TRADE_DURATION = "1 week"
 
 def parse_duration(duration_str):
     duration_str = duration_str.lower().strip()
@@ -1895,7 +2798,7 @@ def load_config():
     print(f"Fetched Config : {config}")
     return config
 
-def generate_md_report(current_date, row, indicators, portfolio, current_price):
+def generate_md_report(current_date, row, indicators, portfolio, current_price, profit_threshold):
     md_content = f"""
 # Complete Bitcoin Data Collection Report
 
@@ -1925,7 +2828,9 @@ def generate_md_report(current_date, row, indicators, portfolio, current_price):
 
 - BTC: {portfolio['btc']}
 - USDT: {portfolio['usdt']}
+- USD PROFIT: {portfolio['usd_profit']}
 - Portfolio Value: {portfolio['btc'] * current_price + portfolio['usdt']}
+- PROFIT THRESHOLD (Dynamic Budget): {profit_threshold}
 """
     return md_content
 
@@ -1953,8 +2858,9 @@ async def run_backtest():
     df['volume'] = df['binance_volume'].fillna(df['yahoo_volume'])
 
     config = load_config()
-    budget = config.get('budget', 10000)
-    portfolio = {'btc': 0.0, 'usdt': budget}
+    initial_budget = config.get('budget', 10000)
+    profit_threshold = initial_budget
+    portfolio = {'btc': 0.0, 'usdt': initial_budget, 'usd_profit': 0.0}
     trade_log = []
     trade_log_path = "backtest_trade_log.csv"
     if os.path.exists(trade_log_path):
@@ -1962,11 +2868,8 @@ async def run_backtest():
 
     subsample = TRADE_INTERVAL_HOURS
     start_date = df['date'].min()
-    #end_date = df['date'].max()
     duration = parse_duration(TRADE_DURATION)
-    #end_date = start_date + duration
-    end_date = df['date'].max()
-    #start_date = end_date - duration
+    end_date = start_date + duration
     print(f"[INFO] Trading period: {start_date.strftime('%Y-%m-%d %H:%M:%S')} to {end_date.strftime('%Y-%m-%d %H:%M:%S')}")
 
     df_test = df[df['date'] >= start_date]
@@ -1983,9 +2886,8 @@ async def run_backtest():
         current_date = row['date']
         current_price = row['close']
 
-        # --- Recalculate indicators using data up to current row ---
         df_slice = df_test[df_test['date'] <= current_date].copy()
-        min_window = 14  # Largest window used for indicators
+        min_window = 14
         if len(df_slice) < min_window:
             indicators = {
                 'atr_14': None,
@@ -2019,64 +2921,88 @@ async def run_backtest():
                 'atr_volatility_ratio': (ta.volatility.AverageTrueRange(df_slice['high'], df_slice['low'], df_slice['close'], window=14).average_true_range().iloc[-1] / df_slice['close'].iloc[-1])
             }
 
-        md_content = generate_md_report(current_date, row, indicators, portfolio, current_price)
+        md_content = generate_md_report(current_date, row, indicators, portfolio, current_price, profit_threshold)
         context = {
             'md_content': md_content,
             'portfolio': portfolio,
+            'profit_threshold': profit_threshold,
             'trade_history': trade_log[-10:]
         }
-        #pprint(f"Context: {trade_log[-10:]}")
+
         decision = get_llm_decision(context)
         pprint(f"LLM Decision : {decision}")
         action = decision.get('action', 'None')
         quantity = decision.get('quantity', 0)
+        profit_amount = decision.get('profit_amount', 0)
 
-        # --- Portfolio management ---
         value_usd_cost = 0
+        fee = 0
         reason = None
 
         if action == 'BUY':
             value_usd_cost = quantity * current_price
+            fee = value_usd_cost * BINANCE_FEE_RATE
+            total_cost = value_usd_cost + fee
             if quantity <= 0:
                 reason = "LLM suggested BUY with zero or negative quantity"
-            elif portfolio['usdt'] < value_usd_cost:
-                reason = f"Insufficient USD balance for BUY (needed ${value_usd_cost:.2f}, available ${portfolio['usdt']:.2f})"
+            elif portfolio['usdt'] < total_cost:
+                reason = f"Insufficient USD balance for BUY (needed ${total_cost:.2f}, available ${portfolio['usdt']:.2f})"
             else:
-                portfolio['usdt'] -= value_usd_cost
+                portfolio['usdt'] -= total_cost
                 portfolio['btc'] += quantity
-
         elif action == 'SELL':
             value_usd_cost = quantity * current_price
+            fee = value_usd_cost * BINANCE_FEE_RATE
+            net_usd = value_usd_cost - fee
             if quantity <= 0:
                 reason = "LLM suggested SELL with zero or negative quantity"
             elif portfolio['btc'] < quantity:
                 reason = f"Insufficient BTC balance for SELL (needed {quantity:.6f}, available {portfolio['btc']:.6f})"
             else:
                 portfolio['btc'] -= quantity
-                portfolio['usdt'] += value_usd_cost
-
+                portfolio['usdt'] += net_usd
+        elif action == 'PROFIT':
+            if profit_amount <= 0:
+                reason = "LLM suggested PROFIT with zero or negative amount"
+            elif portfolio['usdt'] < profit_amount:
+                reason = f"Insufficient USD balance for PROFIT extraction (needed ${profit_amount:.2f}, available ${portfolio['usdt']:.2f})"
+            else:
+                portfolio['usdt'] -= profit_amount
+                portfolio['usd_profit'] += profit_amount
+                profit_threshold += profit_amount  # Update dynamic profit threshold
+            value_usd_cost = profit_amount
         else:
             quantity = 0
             value_usd_cost = 0
+            fee = 0
 
         if reason:
             action = f"Overwrite LLM Decision to HOLD: {reason}"
             quantity = 0
             value_usd_cost = 0
+            fee = 0
 
         btc_value_usd = portfolio['btc'] * current_price
         total_portfolio_value = btc_value_usd + portfolio['usdt']
 
         trade_record = {
             'Timestamp': current_date.strftime('%Y-%m-%d %H:%M:%S'),
-            'Type': action,
-            'Price BTC': current_price,
-            'Quantity': quantity,
+            'Type': action if action != 'PROFIT' else 'PROFIT',
+            'Open': row['open'],
+            'High': row['high'],
+            'Low': row['low'],
+            'Close': row['close'],
+            'Volume': row['volume'],
+            'Quantity': quantity if action != 'PROFIT' else 0,
             'Value USD (Cost)': value_usd_cost,
+            'Fee USD': fee,
             'BTC BALANCE': portfolio['btc'],
             'BTC VALUE USD': btc_value_usd,
             'Total Portfolio Value': total_portfolio_value,
             'USD BALANCE': portfolio['usdt'],
+            'USD PROFIT': portfolio['usd_profit'],
+            'PROFIT THRESHOLD': profit_threshold,
+            'LLM Rationale': decision.get('rationale', '')
         }
         trade_log.append(trade_record)
         pd.DataFrame(trade_log).to_csv(trade_log_path, index=False)
@@ -2085,5 +3011,4 @@ if __name__ == "__main__":
     print("Running in backtest mode...")
     #asyncio.run(run_backtest())
     print("Backtest completed.")
-    # Call this after your backtest
     plot_trade_log()

@@ -405,38 +405,38 @@ def get_llm_decision(context):
         client = initialize_groq_client()
         # Compose prompt for LLM
         system_prompt = f"""
-You are an expert Bitcoin trading algorithm designed to maximize profits on hourly timeframes. Analyze the provided market data and suggest the most profitable action (BUY, SELL, or HOLD) with a confidence score (0-100).
+You are an expert Bitcoin trading algorithm focused on maximizing and securing profits on hourly timeframes.
+For every decision, your top priority is to lock in gains and protect capital by actively extracting profits (PROFIT action) whenever the total portfolio value (BTC value at current price + USDT balance) exceeds the dynamic profit threshold.
 
-YOUR PRIMARY OBJECTIVE: Generate maximum profit on EACH trade by identifying high-probability setups with clear entry/exit points.
+PROFIT THRESHOLD LOGIC:
+- The profit threshold starts as the initial budget.
+- Each time you secure profit (PROFIT action), the threshold increases by the amount secured.
+- Only extract profit when portfolio value exceeds this dynamic threshold.
 
 TRADING RULES:
-1. ONLY BUY when there are strong signals of an imminent upward price movement (2%+ potential within hours).
-2. ONLY SELL when:
-   - You've captured at least 1.5% profit, OR
-   - Clear reversal signals indicate the uptrend is ending, OR
-   - Stop conditions are triggered to protect capital.
-3. DEFAULT to HOLD unless a high-confidence (70%+) opportunity exists.
-4. AVOID frequent trading - quality over quantity is essential.
+1. BUY when there is a clear dip in price, strong technical signals, or high-probability reversal from oversold conditions. Never spend all available USD—always leave at least 30% of the budget unspent to buy future dips.
+2. SELL when there is a clear rise in price, strong technical signals, or high-probability reversal from overbought conditions. Consider partial sells to lock in gains while maintaining some BTC exposure.
+3. PROFIT: Whenever total portfolio value exceeds the dynamic profit threshold, prioritize extracting profits. Move a portion (e.g., 50% or more) of the profit (amount above the threshold) into the USD PROFIT balance, and reinvest the remainder. The USD PROFIT balance is not used for trading and represents secured gains. For PROFIT, always specify the USD amount to secure in the field "profit_amount".
+4. DEFAULT to HOLD unless a high-confidence (70%+) opportunity exists.
+5. AVOID frequent trading—quality over quantity is essential.
 
-PORTFOLIO & RISK MANAGEMENT:
-- Before suggesting a BUY, ALWAYS check the portfolio's available USD balance.
-- DO NOT BUY if the available USD balance is insufficient for the suggested BTC quantity at the current price.
-- For BUY, calculate BTC quantity using a reasonable position size percentage (e.g., 20% of available USD), but ensure the total cost does not exceed available USD.
-- For SELL, NEVER suggest selling more BTC than the portfolio currently holds.
+PORTFOLIO FIELDS:
+- BTC: Bitcoin balance
+- USDT: USD trading balance
+- USD PROFIT: Secured profit, not used for trading
+- PROFIT THRESHOLD: Initial budget + all previously secured profits
 
-TECHNICAL INDICATORS - BUY WHEN:
-- RSI crosses above 30 from oversold territory.
-- Price bounces off support with increasing volume.
-- MACD shows bullish crossover or divergence.
-- Price is testing key support with decreasing selling pressure.
+ACTIONS:
+- BUY: Buy BTC with USDT (specify quantity, ensure at least 30% USD remains after purchase)
+- SELL: Sell BTC for USDT (specify quantity, consider partial sells)
+- HOLD: No action
+- PROFIT: Move USD from USDT to USD PROFIT (secured gains, specify profit_amount)
 
-TECHNICAL INDICATORS - SELL WHEN:
-- RSI reaches overbought territory (70+).
-- Price hits resistance with declining momentum.
-- MACD shows bearish crossover or divergence.
-- Price action shows reversal patterns at resistance.
+TECHNICAL INDICATORS:
+- BUY when RSI crosses above 30, price bounces off support, MACD bullish crossover, or volume increases on a dip.
+- SELL when RSI reaches 70+, price hits resistance, MACD bearish crossover, or volume decreases on a rise.
 
-PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision.
+PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision. Always explain why you chose to secure profits or not.
 
 CONTEXT:
 {json.dumps(context, indent=2)}
@@ -444,15 +444,16 @@ CONTEXT:
 Respond ONLY with valid JSON (no markdown, no explanation, no code block markers):
 
 {{
-    "action": "BUY|SELL|HOLD",
+    "action": "BUY|SELL|HOLD|PROFIT",
     "quantity": <BTC quantity for BUY or SELL, omit for others>,
+    "profit_amount": <USD amount for PROFIT, omit for others>,
     "confidence": <0-100>,
     "rationale": "<brief explanation>"
 }}
 
 """
         response = client.chat.completions.create(
-            model="moonshotai/kimi-k2-instruct",
+            model="moonshotai/kimi-k2-instruct-0905",
             messages=[
                 {"role": "system", "content": system_prompt}
             ],
@@ -465,6 +466,7 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
             return {
                 "action": decision.get("action"),
                 "quantity": decision.get("quantity"),  # For SELL
+                "profit_amount": decision.get("profit_amount"),  # For PROFIT
                 "confidence": decision.get("confidence", 0),
                 "rationale": decision.get("rationale", "")
             }

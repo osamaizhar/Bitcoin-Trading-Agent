@@ -1,1 +1,1 @@
-current_date
+initial_budget
