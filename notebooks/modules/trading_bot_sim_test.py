@@ -3936,7 +3936,7 @@ async def run_backtest():
                     # Move USD to USD PROFIT
                     portfolio['usdt'] -= profit_amount
                     portfolio['usd_profit'] += profit_amount
-                    profit_threshold += profit_amount
+                    #profit_threshold += profit_amount       # --- commented out so profit threshold does not increase with each profit extraction ---
                     value_usd_cost = profit_amount
         elif action == 'HOLD':
             pass
@@ -3988,6 +3988,6 @@ async def run_backtest():
 
 if __name__ == "__main__":
     print("Running in backtest mode...")
-    asyncio.run(run_backtest())
+    #asyncio.run(run_backtest())
     print("Backtest completed.")
     plot_trade_log()
