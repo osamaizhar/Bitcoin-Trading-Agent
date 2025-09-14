@@ -1,1 +1,1 @@
-initial_budget
+buy_amount

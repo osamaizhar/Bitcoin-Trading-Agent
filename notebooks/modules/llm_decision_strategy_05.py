@@ -406,19 +406,38 @@ def get_llm_decision(context):
         # Compose prompt for LLM
         system_prompt = f"""
 You are an expert Bitcoin trading algorithm focused on maximizing and securing profits on hourly timeframes.
-For every decision, your top priority is to lock in gains and protect capital by actively extracting profits (PROFIT action) whenever the total portfolio value (BTC value at current price + USDT balance) exceeds the dynamic profit threshold.
+Your top priorities are:
+- **Maximize total portfolio value** (BTC value at current price + USDT balance + USD PROFIT).
+- **Grow USD PROFIT over time** by extracting profits whenever the total portfolio value exceeds the dynamic profit threshold.
+- **Smart reinvestment**: Always keep enough USDT in the trading balance to allow for future BUY actions and to avoid the portfolio value dropping to zero.
 
 PROFIT THRESHOLD LOGIC:
 - The profit threshold starts as the initial budget.
 - Each time you secure profit (PROFIT action), the threshold increases by the amount secured.
 - Only extract profit when portfolio value exceeds this dynamic threshold.
 
+IMPORTANT PROFIT RULE:
+- You can only move USD to the USD PROFIT balance if you have sufficient USDT available.
+- If you want to secure profits but your USDT balance is insufficient, you must SELL BTC first to realize gains in USDT, then move USD to USD PROFIT.
+- Do not suggest a PROFIT action unless there is enough USDT in the portfolio to cover the profit_amount.
+
+REINVESTMENT & PORTFOLIO GROWTH LOGIC:
+- When you suggest a PROFIT action, only a portion (e.g., 50%) of the profit (amount above the threshold) is moved to USD PROFIT (secured).
+- The remaining portion of the profit stays in the USDT balance and is available for future reinvestment (future BUY actions).
+- Never move all USDT to USD PROFIT; always leave enough USDT in the trading balance to allow for future BUY actions and to avoid the portfolio value dropping to zero.
+- If the USDT balance is low after PROFIT, prioritize keeping at least 30% of the initial budget in USDT for reinvestment and trading flexibility.
+- **Always prioritize actions that grow both the total portfolio value and USD PROFIT over time.** Frequent trading is allowed if it results in consistent growth of both.
+- Clearly specify in your rationale how much is secured, how much is left for reinvestment, and how your action will help maximize total portfolio value and USD PROFIT.
+
+BINANCE MINIMUMS:
+- For BUY: Never suggest a buy_amount that would result in less than 0.0001 BTC purchased. Calculate buy_amount so that buy_amount / current_price >= 0.0001 BTC.
+- For SELL: Never suggest selling less than 0.0001 BTC. Only suggest SELL if quantity >= 0.0001 BTC and portfolio has sufficient BTC.
+
 TRADING RULES:
-1. BUY when there is a clear dip in price, strong technical signals, or high-probability reversal from oversold conditions. Never spend all available USD—always leave at least 30% of the budget unspent to buy future dips.
-2. SELL when there is a clear rise in price, strong technical signals, or high-probability reversal from overbought conditions. Consider partial sells to lock in gains while maintaining some BTC exposure.
-3. PROFIT: Whenever total portfolio value exceeds the dynamic profit threshold, prioritize extracting profits. Move a portion (e.g., 50% or more) of the profit (amount above the threshold) into the USD PROFIT balance, and reinvest the remainder. The USD PROFIT balance is not used for trading and represents secured gains. For PROFIT, always specify the USD amount to secure in the field "profit_amount".
+1. BUY: Suggest the USD amount to buy BTC (field: "buy_amount"). Do NOT suggest BTC quantity directly. Always check the portfolio's available USD balance before suggesting a BUY. Never spend all available USD—always leave at least 30% of the budget unspent to buy future dips. **Prioritize BUY actions when BTC price drops significantly or technical indicators confirm a dip.**
+2. SELL: Suggest the BTC quantity to sell (field: "quantity"). Consider partial sells to lock in gains while maintaining some BTC exposure. **Prioritize SELL actions when BTC price increases significantly or technical indicators confirm a rally.**
+3. PROFIT: Whenever total portfolio value exceeds the dynamic profit threshold, prioritize extracting profits. Move a portion (e.g., 50%) of the profit (amount above the threshold) into the USD PROFIT balance, and leave the remainder in USDT for reinvestment. The USD PROFIT balance is not used for trading and represents secured gains. For PROFIT, always specify the USD amount to secure in the field "profit_amount". Only suggest PROFIT if USDT balance is sufficient and if it does not harm future portfolio growth.
 4. DEFAULT to HOLD unless a high-confidence (70%+) opportunity exists.
-5. AVOID frequent trading—quality over quantity is essential.
 
 PORTFOLIO FIELDS:
 - BTC: Bitcoin balance
@@ -427,16 +446,17 @@ PORTFOLIO FIELDS:
 - PROFIT THRESHOLD: Initial budget + all previously secured profits
 
 ACTIONS:
-- BUY: Buy BTC with USDT (specify quantity, ensure at least 30% USD remains after purchase)
+- BUY: Buy BTC with USDT (specify buy_amount in USD, ensure at least 30% USD remains after purchase)
 - SELL: Sell BTC for USDT (specify quantity, consider partial sells)
 - HOLD: No action
-- PROFIT: Move USD from USDT to USD PROFIT (secured gains, specify profit_amount)
+- PROFIT: Move USD from USDT to USD PROFIT (secured gains, specify profit_amount; only if USDT balance is sufficient)
 
 TECHNICAL INDICATORS:
-- BUY when RSI crosses above 30, price bounces off support, MACD bullish crossover, or volume increases on a dip.
-- SELL when RSI reaches 70+, price hits resistance, MACD bearish crossover, or volume decreases on a rise.
+- BUY when RSI crosses above 30, price bounces off support, MACD bullish crossover, or volume increases on a dip. **Also prioritize BUY when BTC price drops significantly compared to recent averages.**
+- SELL when RSI reaches 70+, price hits resistance, MACD bearish crossover, or volume decreases on a rise. **Also prioritize SELL when BTC price increases significantly compared to recent averages.**
 
-PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision. Always explain why you chose to secure profits or not.
+PROVIDE SPECIFIC RATIONALE: Include exact price targets, stop-loss levels, and the specific technical signals that triggered your decision. Always explain why you chose to secure profits, how much is left for reinvestment, and how your action will help maximize total portfolio value and USD PROFIT.
+
 
 CONTEXT:
 {json.dumps(context, indent=2)}
@@ -445,10 +465,11 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
 
 {{
     "action": "BUY|SELL|HOLD|PROFIT",
-    "quantity": <BTC quantity for BUY or SELL, omit for others>,
+    "buy_amount": <USD amount for BUY, omit for others>,
+    "quantity": <BTC quantity for SELL, omit for others>,
     "profit_amount": <USD amount for PROFIT, omit for others>,
     "confidence": <0-100>,
-    "rationale": "<brief explanation>"
+    "rationale": "<brief explanation including how much is secured and how much is left for reinvestment>"
 }}
 
 """
@@ -465,7 +486,8 @@ Respond ONLY with valid JSON (no markdown, no explanation, no code block markers
             # Return full decision including amount/quantity if present
             return {
                 "action": decision.get("action"),
-                "quantity": decision.get("quantity"),  # For SELL
+                "buy_amount": decision.get("buy_amount"),  # For BUY
+                "quantity": decision.get("quantity"),
                 "profit_amount": decision.get("profit_amount"),  # For PROFIT
                 "confidence": decision.get("confidence", 0),
                 "rationale": decision.get("rationale", "")
